@@ -1,0 +1,189 @@
+You are an expert TypeScript game engineer. Create a complete, runnable web game MVP called “Stackdoku – Reveal & Resolve”.
+
+GOALS
+- A modern, stylish, polished puzzle game playable in a browser (desktop + mobile responsive).
+- Core loop: a Mahjong-style layered tile stack covering a 9x9 Sudoku solution grid. Player removes only “free” tiles. Removing reveals the number for that Sudoku cell. Player must reveal enough cells and end with a valid completed Sudoku grid (or a clearly defined completion state).
+- Every generated level must be solvable (never impossible). Levels must be random and different each play.
+- Include tutorial Level 1 as an interactive guided demo.
+- Include tray system + undo + hints.
+- Include option for “Visible vs Hidden numbers” (as a difficulty option and also toggleable in settings).
+
+TECH STACK
+- TypeScript
+- Vite
+- Phaser 3 for rendering and input
+- Minimal UI overlay in HTML/CSS for menus and HUD (or Phaser UI if easier, but keep UI clean).
+- No backend required.
+- Add a clear path for later wrapping with Capacitor (do not implement Capacitor now, but structure build output as static assets).
+- Lint/format: ESLint + Prettier
+- Tests: Vitest for generator/solver logic (at least basic tests).
+
+PROJECT OUTPUT
+- Provide complete repo scaffolding and all code needed to run locally.
+- Include:
+  - README.md with setup and run instructions
+  - AGENT_RULES.md with strict engineering rules
+  - package.json scripts: dev, build, preview, test, lint, format
+  - src/ with organized modules
+  - assets/ minimal placeholder visuals (procedural shapes are fine), plus one simple sound effect if feasible.
+- Ensure code is deterministic where needed and includes seed-based generation support.
+
+GAME DESIGN SPEC
+
+1) BOARD + GRID
+- Underlying Sudoku: a valid 9x9 solution grid (numbers 1-9).
+- Tile stack: a 3D/isometric-like layout that maps each tile to a unique Sudoku cell (r,c).
+- Tiles start “hidden” (default) meaning the face number is not shown until removed (Reveal & Resolve).
+- Each tile has:
+  - cell position (row, col)
+  - number value from the solution
+  - stack coordinates (x,y,z layer)
+  - render state (covered/free/removed)
+
+2) FREE TILE RULE (Mahjong-like)
+A tile is removable if:
+- It is not covered by another tile above (no tile occupying same (x,y) at higher z),
+AND
+- At least one horizontal side is open (no tile adjacent on left OR right at same z and y). Use a simplified rule:
+  - Represent neighbors on the same layer by adjacency in stack grid coordinates. Define left and right neighbors in x direction.
+
+3) REVEAL & RESOLVE RULES
+- When a player removes a free tile:
+  - The Sudoku cell becomes “revealed” (locked-in) with that number.
+  - The revealed cell must not violate Sudoku constraints among revealed cells:
+    - No duplicate numbers in any row, column, or 3x3 box among revealed cells.
+  - If it would violate constraints, the move is illegal (prevent removal) OR allow but penalize. For MVP: make it illegal and visually explain why.
+- Win condition for MVP:
+  - All 81 cells are revealed (by removing all tiles) AND revealed grid has no violations (it will, if only legal moves allowed).
+- Loss condition:
+  - Player is stuck with no legal moves and no available undo/hint options OR tray overflows (see tray rules).
+  - For MVP: implement “no legal moves” detection and show “Stuck” with options: Undo, Hint, Restart.
+
+4) VISIBLE vs HIDDEN MODE
+- Add a setting:
+  - Hidden mode (default): tile faces are blank until removed (numbers shown only on the grid once revealed).
+  - Visible mode: tile faces show their numbers even before removal (easier planning).
+- This can be a per-level setting and also a quick toggle in pause/settings.
+- Changing mid-level should be allowed, but do not alter the underlying puzzle.
+
+5) TRAY + UNDO + HINTS
+- Tray: when you remove a tile, it goes into a tray (visual bar with last N removed, N=7).
+- The tray is for:
+  - Undo: you can undo up to N moves (pop from tray).
+  - Optional future mechanic: but for MVP, it is purely an undo stack.
+- Undo:
+  - Restores the tile to the stack (same position), unreveals the Sudoku cell, and restores previous constraint state.
+  - Unlimited undo for MVP OR limit to 20 per level. Implement a configuration with default unlimited.
+- Hints:
+  - Hint finds one currently legal tile that advances progress:
+    - Prioritize tiles that are free and do not create future dead-ends (use solver guidance).
+  - Provide 3 hints per level for free; premium later can be unlimited.
+  - For MVP: 3 hints, displayed with glow and a short label “Try this tile”.
+- If tray is full and player tries to remove another tile:
+  - Block move and prompt to undo or proceed by clearing older moves (do NOT implement clearing for MVP; just block).
+
+6) LEVEL GENERATION (CRITICAL)
+MVP must generate solvable random levels:
+- Step A: Generate a full valid Sudoku solution grid.
+  - Implement a standard backtracking Sudoku generator with randomization.
+- Step B: Generate a stack layout that maps each of the 81 cells to a tile coordinate (x,y,z).
+  - Provide at least 2-3 layout templates (e.g., pyramid-ish, stepped, flat+layers) and randomly choose.
+  - Ensure each cell maps to exactly one tile.
+- Step C: Validate solvability by simulation:
+  - Simulate playing with a solver that chooses legal free tiles while maintaining Sudoku revealed constraints.
+  - If it gets stuck, regenerate (new layout or new Sudoku seed).
+  - Put a cap on attempts (e.g., 50) and fall back to easier layout if needed.
+- Provide difficulty scaling:
+  - Easy: Visible mode default, fewer layers, more free tiles early, more hints
+  - Medium: Hidden mode default, moderate layering
+  - Hard: Hidden mode, tighter layering, fewer early free tiles
+- Include seed support:
+  - Each level has a seed and the generator uses it. Allow “Daily Puzzle” seed mode (optional; scaffold but can be stubbed).
+
+7) TUTORIAL LEVEL (LEVEL 1)
+- Scripted, not random.
+- Uses an easy layout with a small set of guided moves:
+  - Step 1: highlight a free tile, show tooltip “Free tile: tap to remove”
+  - Step 2: show revealed number appears on Sudoku grid.
+  - Step 3: demonstrate a blocked tile (cannot tap).
+  - Step 4: demonstrate illegal move due to Sudoku constraint (player taps, show “Would duplicate in row/col/box”)
+  - Step 5: show hint button usage and undo.
+- Tutorial ends by letting player finish a small section (does not need to complete full 81; allow “Finish tutorial” once steps are shown).
+- After tutorial, unlock normal mode.
+
+8) UI/UX STYLE
+- Modern, minimal, slightly playful:
+  - Soft shadows, rounded panels, clean typography.
+  - Tile visuals: simple beveled rectangles with subtle gradient; isometric offset for depth.
+  - Animations: quick hover/tap scale, smooth lift on removal, gentle glow for hints.
+- HUD:
+  - Top: level, difficulty, mode (Visible/Hidden), pause
+  - Middle: isometric board
+  - Bottom: Sudoku grid showing revealed cells, plus tray and buttons (Undo, Hint, Restart).
+- Provide accessibility basics:
+  - Colorblind-friendly: do not rely only on color; use icons + outlines.
+  - Large tap targets for mobile.
+
+9) CODE ARCHITECTURE
+- src/
+  - main.ts (boot Phaser + UI)
+  - game/
+    - scenes/BootScene.ts, MenuScene.ts, TutorialScene.ts, GameScene.ts
+    - ui/HudOverlay.ts (hooks to HTML overlay if used)
+    - rendering/TileSprite.ts
+    - logic/
+      - sudoku/
+        - generator.ts (solution generation)
+        - rules.ts (constraint checks)
+      - stack/
+        - layouts.ts (templates + mapping)
+        - freeTile.ts (free determination)
+      - level/
+        - levelGenerator.ts (ties together)
+        - solvability.ts (simulate/validate)
+      - state/
+        - GameState.ts (revealed cells, tray, hints left, undo stack)
+  - styles/ (CSS)
+- Keep pure logic (generator/solver) independent of Phaser so it can be unit tested.
+
+10) TESTS
+- Unit tests for:
+  - Sudoku generator returns valid grid.
+  - Constraint checker detects duplicates.
+  - Free tile rule basic cases.
+  - Level generator produces solvable level within attempt cap (use fixed seed for determinism).
+
+DELIVERABLE REQUIREMENTS
+- The project must run with:
+  - npm install
+  - npm run dev
+- Must build with:
+  - npm run build
+- Keep dependencies minimal.
+- Do not use m-dashes anywhere in generated docs (avoid “—”).
+- All lists in README should use bullet points not numbered lists.
+
+AGENT RULES
+Create AGENT_RULES.md that instructs future agents:
+- Keep logic and rendering separated.
+- Do not introduce new dependencies without strong justification.
+- Preserve deterministic seed generation.
+- Always keep tutorial playable.
+- Never break solvability validation.
+
+IMPLEMENTATION DETAILS
+- Use a simple seeded RNG utility (Mulberry32 or similar).
+- Use Phaser pointer events for tile selection.
+- Provide visual feedback:
+  - Free tiles: subtle outline
+  - Blocked: dim
+  - Illegal due to constraint: shake + tooltip
+- For the Sudoku grid:
+  - Display 9x9 with 3x3 box lines.
+  - Only revealed cells show numbers.
+  - When a move would violate constraints, highlight the conflicting row/col/box.
+
+Finally:
+- Generate all files with complete code.
+- Ensure the MVP is polished enough to feel good within 5 minutes of play.
+- Include a short “Next Improvements” section in README (ads, premium, daily puzzle, cosmetics, analytics).
