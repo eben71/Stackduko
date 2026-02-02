@@ -1,18 +1,34 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  isGuest: boolean("is_guest").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const scores = pgTable("scores", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  score: integer("score").notNull(),
+  timeSeconds: integer("time_seconds").notNull(),
+  difficulty: text("difficulty").notNull(), // "easy", "medium", "hard"
+  completed: boolean("completed").default(false),
+  seed: text("seed"), // For replaying/daily challenges
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
+// Schemas
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertScoreSchema = createInsertSchema(scores).omit({ id: true, createdAt: true });
+
+// Types
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Score = typeof scores.$inferSelect;
+export type InsertScore = z.infer<typeof insertScoreSchema>;
+
+export type CreateScoreRequest = InsertScore;
+export type ScoreResponse = Score & { user?: User };
