@@ -149,7 +149,7 @@ export default function Home() {
   const { isPlaying } = useGameStore();
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-background relative">
+    <div className="w-screen h-screen overflow-hidden bg-background relative flex items-center justify-center">
       <AnimatePresence mode="wait">
         {!isPlaying ? (
           <motion.div

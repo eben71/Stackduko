@@ -30,7 +30,7 @@ class MainScene extends Phaser.Scene {
 
   preload() {
     // Generate textures programmatically to avoid external asset dependencies for this demo
-    const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+    const graphics = this.make.graphics({ x: 0, y: 0 });
     
     // Tile Top
     graphics.fillStyle(0xffffff);
