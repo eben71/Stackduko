@@ -68,7 +68,7 @@ export function GameOverlay() {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-6">
+    <div className="absolute inset-0 z-50 flex flex-col justify-between p-6">
       {/* HUD Header */}
       <div className="flex justify-between items-start pointer-events-auto">
         <motion.div 
