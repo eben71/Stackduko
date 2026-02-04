@@ -1,6 +1,29 @@
+# Node
 node_modules
+coverage
+
+# Avoid committing Python coverage artifacts (e.g., apps/worker/.coverage) to prevent merge conflicts.
+.coverage
+coverage.xml
+
+# Environments
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.codex/
+
+# IDE
+.vscode
+.idea
+
+# Docker
+*.log
 dist
+build
+.eggs
+*.egg-info
+
+# Misc
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz

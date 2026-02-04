@@ -1,0 +1,16 @@
+# CodeQL configuration (adjust paths and ignores for derived repos).
+
+name: "codeql-config"
+
+paths:
+  - src
+  - apps
+  - .github/workflows
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/venv/**"
+  - "**/build/**"
+  - "**/coverage/**"
+  - "**/dist/**"
+  - "**/cache/**"

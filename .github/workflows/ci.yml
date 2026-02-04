@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Insert stack-specific setup actions here (language runtimes, caches, etc.).
+      - name: Install dependencies
+        run: <install-deps-command>
+
+      - name: Lint
+        run: make lint
+
+      - name: Format check
+        run: make format-check
+
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Test
+        run: make test
+
+      - name: Enforce coverage gate
+        run: scripts/check-coverage
+
+      - name: Build
+        run: make build
+
+      - name: Check docs
+        run: scripts/check-docs
+
+      - name: Dependency audit
+        run: <dependency-audit-command>
