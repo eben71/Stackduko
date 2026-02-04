@@ -77,7 +77,7 @@ class MainScene extends Phaser.Scene {
     });
   }
 
-  drawGridBase() {
+  private drawGridBase() {
     const graphics = this.add.graphics();
     graphics.lineStyle(2, 0x334155, 0.5); // Grid lines
 
@@ -101,20 +101,35 @@ class MainScene extends Phaser.Scene {
     
     graphics.strokePath();
 
-    // Draw the actual numbers on the "floor"
+    // Interaction layer for Sudoku solving
     for(let r=0; r<9; r++) {
         for(let c=0; c<9; c++) {
-            const num = this.board[r][c];
-            this.add.text(
-                startX + c * TILE_SIZE + TILE_SIZE/2,
-                startY + r * TILE_SIZE + TILE_SIZE/2,
-                num.toString(),
+            const cellX = startX + c * TILE_SIZE;
+            const cellY = startY + r * TILE_SIZE;
+            
+            const cellZone = this.add.zone(cellX + TILE_SIZE/2, cellY + TILE_SIZE/2, TILE_SIZE, TILE_SIZE)
+                .setInteractive({ useHandCursor: true });
+            
+            // Create the visible number (hidden initially)
+            const numText = this.add.text(
+                cellX + TILE_SIZE/2,
+                cellY + TILE_SIZE/2,
+                '',
                 { 
                     fontFamily: 'Fredoka, sans-serif',
                     fontSize: '32px', 
-                    color: '#475569' 
+                    color: '#2563eb' 
                 }
-            ).setOrigin(0.5);
+            ).setOrigin(0.5).setDepth(10);
+
+            cellZone.on('pointerdown', () => {
+                // Only allow input if the tile covering this cell is removed
+                // This will be expanded with the "solving" UI in React
+                this.storeActions.setSelectedCell({ r, c });
+            });
+
+            // Store references to update numbers
+            this.data.set(`cell_${r}_${c}`, numText);
         }
     }
     
