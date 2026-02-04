@@ -1,0 +1,192 @@
+Implement the Options/Settings screen for Stackdoku using TypeScript + Phaser 3 + HTML/CSS overlay. This must be fully wired and functional, not just a mock.
+
+REQUIREMENTS
+- Create a Settings screen/overlay that can be opened from:
+  - Main Menu (Options button)
+  - Pause Menu (Options button)
+- Settings must:
+  - Have defaults on first run
+  - Persist changes to localStorage immediately
+  - Load from localStorage on startup and apply globally
+- This same storage layer must also store MVP player progress + best scores.
+
+TECH/UI STYLE
+- Minimal, modern, slightly playful
+  - Rounded cards (12-16px radius), soft shadow, clean font
+  - A subtle accent color for toggles/highlights (do not hardcode too aggressively)
+  - Responsive layout: works on desktop and mobile
+- Use HTML/CSS for Settings UI (recommended):
+  - Create an overlay panel centered with a dimmed background
+  - Make it keyboard accessible: ESC closes, focus trap if feasible
+  - Large tap targets for mobile
+
+SETTINGS UI CONTENT (must include)
+Section A: Gameplay
+- Difficulty Default (radio or segmented control):
+  - Easy, Medium, Hard
+  - Default: Medium
+  - Function:
+    - Sets the default difficulty when the user hits Play (unless they choose explicitly elsewhere)
+- Number Visibility (toggle):
+  - Label: “Show numbers on tiles (Visible mode)”
+  - Default: OFF (Hidden mode) for Medium/Hard, ON for Easy
+  - Implementation:
+    - Store a global setting "tileNumbersVisible"
+    - When ON: tile sprites render their number on the tile face even before removal
+    - When OFF: tiles are blank until removed; revealed numbers appear only in Sudoku grid
+  - IMPORTANT:
+    - If user changes this in settings, it overrides difficulty defaults
+- Hints Per Level (stepper):
+  - Default: 3
+  - Range: 0..10
+  - Function:
+    - Sets initial hints at level start
+- Undo Limit (stepper or toggle + stepper):
+  - Default: Unlimited
+  - If limited, range: 0..50
+  - Function:
+    - Caps undo operations per level if set
+- Animation Intensity (slider):
+  - Default: 70%
+  - Range: 0..100
+  - Function:
+    - Scales animation durations and effects
+    - At 0: minimal motion, no shake
+- Tutorial Tips (toggle):
+  - Default: ON
+  - Function:
+    - If ON: show short tooltips for illegal moves, free-tile hint outlines, etc.
+    - If OFF: suppress most instructional prompts outside tutorial level
+
+Section B: Audio
+- Sound Effects (toggle):
+  - Default: ON
+  - Function:
+    - Enables/disables SFX playback
+- Music (toggle):
+  - Default: OFF (safe default)
+  - Function:
+    - Enables/disables background music if present
+- Volume (slider):
+  - Default: 80%
+  - Function:
+    - Applies to SFX and music
+    - Disabled/grayed out if both toggles OFF
+
+Section C: Accessibility
+- High Contrast (toggle):
+  - Default: OFF
+  - Function:
+    - Adds thicker outlines and increased contrast for tiles and Sudoku grid
+- Large Text (toggle):
+  - Default: OFF
+  - Function:
+    - Increases HUD and number font sizes
+
+Section D: Data
+- Button: “Reset Progress”
+  - Shows confirmation modal:
+    - “Reset all saved progress and best scores? This cannot be undone.”
+  - If confirmed:
+    - Clears progress keys from localStorage but keeps settings (or ask, but default: keep settings)
+- Button: “Reset Settings”
+  - Confirms, then resets settings to defaults and persists
+
+SETTINGS DEFAULTS
+Define explicit defaults (first run):
+- defaultDifficulty: "medium"
+- tileNumbersVisible: false
+- hintsPerLevel: 3
+- undoLimit: null (null means unlimited)
+- animationIntensity: 0.7
+- tutorialTips: true
+- sfxEnabled: true
+- musicEnabled: false
+- volume: 0.8
+- highContrast: false
+- largeText: false
+
+LOCAL STORAGE DESIGN
+Implement a small persistence module:
+- src/game/state/storage.ts
+- Define keys:
+  - "stackdoku.settings.v1"
+  - "stackdoku.progress.v1"
+- Use versioned JSON objects.
+
+Type definitions:
+- Settings:
+  - version: 1
+  - fields above
+- Progress:
+  - version: 1
+  - tutorialCompleted: boolean
+  - highestLevelUnlocked: number (starting 1)
+  - bestTimesMs: record keyed by difficulty + levelId
+  - bestMoves: record keyed by difficulty + levelId
+  - totalWins: number
+  - totalPlays: number
+  - lastPlayedAt: ISO string
+
+Behavior:
+- On startup:
+  - load settings from localStorage
+  - if missing or invalid, write defaults
+- Provide functions:
+  - getSettings(): Settings
+  - updateSettings(patch): Settings  (merge, validate, save)
+  - resetSettings(): Settings
+  - getProgress(): Progress
+  - updateProgress(patch): Progress (merge, validate, save)
+  - resetProgress(): Progress
+
+Validation:
+- Clamp numeric ranges
+- Handle corrupted JSON by falling back to defaults and re-saving
+
+INTEGRATION REQUIREMENTS
+- Ensure MenuScene and PauseMenu can open the Settings overlay.
+- Ensure settings apply to gameplay immediately:
+  - tileNumbersVisible affects TileSprite rendering
+  - hintsPerLevel affects per-level hint counter initialization
+  - undoLimit affects undo availability
+  - animationIntensity affects tween durations
+  - tutorialTips affects tooltip displays
+  - highContrast/largeText affect CSS classes and Phaser render styles as needed
+- When a level ends (win):
+  - update progress with best time/best moves if improved
+  - increment totalWins
+- When a level starts:
+  - increment totalPlays
+  - set lastPlayedAt
+
+UI IMPLEMENTATION DETAILS
+- Create:
+  - src/ui/SettingsOverlay.ts (or similar)
+  - src/styles/settings.css
+- Overlay has:
+  - Header: “Settings”
+  - Close button (X) top right
+  - Save is implicit (changes persist immediately), show a subtle “Saved” toast on change (optional)
+  - Bottom buttons: Close
+- Use semantic HTML controls (input type="checkbox", range, etc.)
+- Use CSS variables for theme: background, card, text, accent
+
+ACCEPTANCE CHECKLIST (must satisfy)
+- Opening settings from Menu works
+- Opening settings from Pause works and returns to game when closed
+- Changing a setting persists after refresh
+- Reset Settings restores defaults
+- Reset Progress clears progress fields and updates UI accordingly
+- At least one gameplay behavior changes immediately when toggling Visible mode (tile faces show/hide numbers)
+- Progress updates on win (best time and total wins) stored in localStorage
+
+Do not introduce new dependencies beyond what already exists unless absolutely necessary.
+If Settings overlay is currently Phaser-only, refactor to HTML overlay unless doing so would break the build.
+Do not use m-dashes in docs or UI text.
+Use bullet points not numbered lists in README.
+
+After implementing, include a brief note in README:
+- where settings are stored
+- how to reset settings/progress
+- what each setting does
