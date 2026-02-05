@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { useGameStore } from "../../../client/src/store/gameStore";
-import {
-  createInitialState,
-  createSolverContext,
-} from "../../../client/src/logic/solver/solver";
+import { createInitialState, createSolverContext } from "../../../client/src/logic/solver/solver";
 import { resetProgress, getProgress } from "../../../client/src/game/state/storage";
 
 describe("gameStore branches", () => {

@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 const mockIsSolvable = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../client/src/logic/solver/solver", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../client/src/logic/solver/solver")
-  >("../../../client/src/logic/solver/solver");
+  const actual = await vi.importActual<typeof import("../../../client/src/logic/solver/solver")>(
+    "../../../client/src/logic/solver/solver",
+  );
   return {
     ...actual,
     isSolvable: mockIsSolvable,
