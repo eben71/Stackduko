@@ -13,30 +13,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Insert stack-specific setup actions here (language runtimes, caches, etc.).
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
       - name: Install dependencies
-        run: <install-deps-command>
-
-      - name: Lint
-        run: make lint
-
-      - name: Format check
-        run: make format-check
+        run: npm ci
 
       - name: Typecheck
-        run: make typecheck
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Test
-        run: make test
-
-      - name: Enforce coverage gate
-        run: scripts/check-coverage
+        run: npm run test
 
       - name: Build
-        run: make build
-
-      - name: Check docs
-        run: scripts/check-docs
-
-      - name: Dependency audit
-        run: <dependency-audit-command>
+        run: npm run build

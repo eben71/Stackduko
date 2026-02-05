@@ -1,39 +1,51 @@
-# Project Template Base
+# Stackdoku - Reveal & Resolve
 
-This repository is a **base for new projects**. It provides a starting structure for documentation, contribution guidelines, quality gates, CI/CD, housekeeping, and agent guardrails.
+## What It Is
+- Stackdoku is a single player puzzle that blends Mahjong style tile removal with Sudoku constraints.
+- Remove free tiles to reveal numbers that lock into the Sudoku grid.
+- Every level is generated with a seeded solver to ensure solvability.
 
-## What This Template Does Not Do
+## Run Locally
+- npm install
+- npm run dev
+- npm run test
+- npm run build
 
-- It **does not** include language- or framework-specific code.
-- It **does not** define concrete build or test commands.
-- It **does not** prescribe architecture choices for derived projects.
+## Controls
+- Tap or click a free tile to remove it.
+- Use Undo to restore the last removed tile.
+- Use Hint to highlight a legal move.
+- Use Restart to reset the current level.
+- Use Pause to open the pause menu.
 
-Derived repositories must replace placeholders (for example, `<install-deps-command>` and `<run-tests>`) with concrete, stack-specific commands and implementations.
+## Settings
+- Default difficulty selects the starting difficulty when you hit Play.
+- Show numbers on tiles toggles Visible mode for tile faces.
+- Hints per level sets the starting hint counter.
+- Undo limit caps or removes undo availability per level.
+- Animation intensity scales tween durations and shake effects.
+- Tutorial tips toggles instructional prompts.
+- Sound effects toggles SFX playback.
+- Music toggles background music playback.
+- Volume controls loudness for SFX and music.
+- High contrast thickens outlines and increases tile and grid contrast.
+- Large text increases HUD and tile font sizes.
+
+## Storage
+- Settings are stored in localStorage under stackdoku.settings.v1.
+- Progress and best scores are stored under stackdoku.progress.v1.
+- Use Reset Settings or Reset Progress in the Settings screen to clear data.
 
 ## Repo Structure
+- client/ for the React and Phaser game
+- server/ for the API scaffolding used by the template
+- shared/ for shared schemas
+- docs/ for the game design document
+- tests/ for unit tests
 
-- `src/` or `apps/`: primary source or application directories (placeholder).
-- `packages/`: shared libraries or packages (placeholder).
-- `docs/`: project documentation and contribution guides.
-- `infra/docker/`: infrastructure and container assets (placeholder).
-- `.github/`: CI/CD workflows and repository automation.
-- `scripts/`: quality gate and documentation checks.
-- `skills/`: agent scripts and guardrails for automated remediation.
-
-## Local Development
-
-1. Copy `.env.example` to `.env` and fill in required values.
-2. Run `make setup` to install dependencies.
-3. Use `make dev` to start local services.
-4. Run quality checks via `make lint`, `make format-check`, `make typecheck`, and `make test`.
-
-> **Note:** All `make` targets are placeholders. Derived repositories must replace the placeholder commands with stack-specific equivalents.
-
-## Additional Details (Customize in Derived Repos)
-
-- Architecture overview
-- Environment setup specifics
-- Deployment workflows
-- Observability, monitoring, and runbooks
-
-This template is intentionally minimal and **must be customized** in derived repositories.
+## Next Improvements
+- Ads integration between levels
+- Premium toggle to remove ads
+- Daily puzzle seed rotation
+- Cosmetic themes and tile skins
+- Analytics for difficulty tuning

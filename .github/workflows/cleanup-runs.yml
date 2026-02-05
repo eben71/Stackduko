@@ -8,10 +8,13 @@ on:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - name: Cleanup old runs
         env:
           RETAIN_PER_BRANCH: 20
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 

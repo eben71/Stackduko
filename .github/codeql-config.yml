@@ -3,8 +3,10 @@
 name: "codeql-config"
 
 paths:
-  - src
-  - apps
+  - client
+  - server
+  - shared
+  - script
   - .github/workflows
 
 paths-ignore:

@@ -1,51 +1,45 @@
-.PHONY: setup dev lint format format-check typecheck test build hooks agent-%
+.PHONY: setup dev check lint lint-fix format format-check test build start db-push
 
-# setup: install project dependencies (replace with stack-specific command).
+# setup: install dependencies.
 setup:
-	@echo "Running setup..."
-	@<install-deps-command>
+	@npm install
 
-# dev: start local services (replace with stack-specific command).
+# dev: start the development server.
 dev:
-	@echo "Starting development services..."
-	@<start-dev-services>
+	@npm run dev
 
-# lint: run static analysis (replace with stack-specific command).
+# check: run TypeScript type checks.
+check:
+	@npm run check
+
+# lint: run ESLint.
 lint:
-	@echo "Running lint checks..."
-	@<lint-command>
+	@npm run lint
 
-# format: apply code formatting (replace with stack-specific command).
+# lint-fix: auto-fix lint issues where possible.
+lint-fix:
+	@npm run lint:fix
+
+# format: apply Prettier formatting.
 format:
-	@echo "Formatting code..."
-	@<format-command>
+	@npm run format
 
-# format-check: verify code formatting (replace with stack-specific command).
+# format-check: verify Prettier formatting.
 format-check:
-	@echo "Checking formatting..."
-	@<format-command>
+	@npm run format:check
 
-# typecheck: run static type checks (replace with stack-specific command).
-typecheck:
-	@echo "Running type checks..."
-	@<typecheck-command>
-
-# test: run tests with coverage (replace with stack-specific command).
+# test: run unit tests with coverage.
 test:
-	@echo "Running tests..."
-	@<run-tests>
+	@npm run test
 
-# build: build production artifacts (replace with stack-specific command).
+# build: build client + server bundles.
 build:
-	@echo "Building artifacts..."
-	@<build-command>
+	@npm run build
 
-# hooks: install git hooks using Lefthook/Husky or equivalent.
-hooks:
-	@echo "Installing git hooks..."
-	@<install-hooks-command>
+# start: run the production server from dist/.
+start:
+	@npm run start
 
-# agent-%: run agent scripts (replace with stack-specific agent runner).
-agent-%:
-	@echo "Running agent $*..."
-	@<agent-runner-command> $*
+# db-push: push schema to the database (requires DATABASE_URL).
+db-push:
+	@npm run db:push
