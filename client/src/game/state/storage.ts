@@ -63,6 +63,8 @@ const DEFAULT_PROGRESS: Progress = {
   lastSeedPlayed: null,
 };
 
+let memoryStorage: Storage | null = null;
+
 function getStorage(): Storage {
   if (typeof window !== "undefined" && window.localStorage) {
     return window.localStorage;
@@ -74,23 +76,26 @@ function getStorage(): Storage {
     return (globalThis as { localStorage?: Storage }).localStorage as Storage;
   }
 
-  const memory = new Map<string, string>();
-  return {
-    getItem: (key: string) => (memory.has(key) ? memory.get(key)! : null),
-    setItem: (key: string, value: string) => {
-      memory.set(key, value);
-    },
-    removeItem: (key: string) => {
-      memory.delete(key);
-    },
-    clear: () => {
-      memory.clear();
-    },
-    key: (index: number) => Array.from(memory.keys())[index] ?? null,
-    get length() {
-      return memory.size;
-    },
-  } as Storage;
+  if (!memoryStorage) {
+    const memory = new Map<string, string>();
+    memoryStorage = {
+      getItem: (key: string) => (memory.has(key) ? memory.get(key)! : null),
+      setItem: (key: string, value: string) => {
+        memory.set(key, value);
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+      clear: () => {
+        memory.clear();
+      },
+      key: (index: number) => Array.from(memory.keys())[index] ?? null,
+      get length() {
+        return memory.size;
+      },
+    } as Storage;
+  }
+  return memoryStorage;
 }
 
 function safeParse(raw: string | null): unknown {

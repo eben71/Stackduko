@@ -40,7 +40,8 @@ app.use((req, res, next) => {
 
   const originalResJson = res.json;
   res.json = function (bodyJson: unknown, ...args) {
-    capturedJsonResponse = bodyJson;
+    capturedJsonResponse =
+      bodyJson && typeof bodyJson === "object" ? (bodyJson as Record<string, unknown>) : undefined;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 

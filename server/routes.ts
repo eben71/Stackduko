@@ -10,13 +10,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       // Simple guest auth: if username exists, return it, else create
       // In a real app, we'd use Replit Auth or proper sessions
-      const input = api.users.getOrCreate.input?.parse(req.body);
+      const parsed = api.users.getOrCreate.input?.safeParse(req.body);
+      const input = parsed?.success ? parsed.data : null;
+      const hasUsername = typeof req.body?.username === "string";
 
-      if (!input?.username) {
+      if (!hasUsername) {
         // Create generic guest
         const username = `Guest${Math.floor(Math.random() * 10000)}`;
         const user = await storage.createUser({ username, isGuest: true });
         return res.status(201).json(user);
+      }
+
+      if (!input) {
+        return res.status(400).json({ message: "Invalid request" });
       }
 
       let user = await storage.getUserByUsername(input.username);

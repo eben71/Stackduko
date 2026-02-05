@@ -13,3 +13,5 @@ export type TilePosition = {
   y: number;
   z: number;
 };
+
+export const TILE_POSITION_KEYS = ["x", "y", "z"] as const;

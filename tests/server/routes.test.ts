@@ -2,18 +2,18 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createServer } from "http";
-import { registerRoutes } from "../../server/routes";
-
-const mockStorage = {
+const mockStorage = vi.hoisted(() => ({
   getUserByUsername: vi.fn(),
   createUser: vi.fn(),
   getTopScores: vi.fn(),
   createScore: vi.fn(),
-};
+}));
 
 vi.mock("../../server/storage", () => ({
   storage: mockStorage,
 }));
+
+import { registerRoutes } from "../../server/routes";
 
 describe("registerRoutes", () => {
   beforeEach(() => {
