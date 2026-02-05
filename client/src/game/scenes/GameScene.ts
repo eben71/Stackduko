@@ -178,13 +178,13 @@ export class GameScene extends Phaser.Scene {
   private syncFromStore() {
     const state = useGameStore.getState();
     if (!state.solverContext) return;
-    this.solverContext = state.solverContext;
+    const context = state.solverContext;
 
     this.boardRenderer?.updateRevealed(state.revealed);
 
     this.tiles.forEach((tileSprite, index) => {
       if (!state.present[index]) return;
-      const isFree = isTileFree(state.solverContext, state, index);
+      const isFree = isTileFree(context, state, index);
       const isHint = state.hintTile === index;
       tileSprite.setHighlight(isHint ? "hint" : isFree ? "free" : "none");
       tileSprite.setNumberVisible(this.settings.tileNumbersVisible);

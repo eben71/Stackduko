@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildAdjacency, isFreeTile } from "../../../client/src/logic/stack/freeTile";
 import { generateLevel } from "../../../client/src/logic/level/levelGenerator";
-import { createInitialState, createSolverContext, isSolvable } from "../../../client/src/logic/solver/solver";
+import {
+  createInitialState,
+  createSolverContext,
+  isSolvable,
+} from "../../../client/src/logic/solver/solver";
 
 describe("Free tile rule", () => {
   it("detects covered and side-blocked tiles", () => {

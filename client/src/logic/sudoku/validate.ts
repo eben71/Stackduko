@@ -26,7 +26,12 @@ export function isValidSolution(grid: SudokuGrid): boolean {
   return true;
 }
 
-export function isPlacementLegal(grid: SudokuGrid, row: number, col: number, value: number): boolean {
+export function isPlacementLegal(
+  grid: SudokuGrid,
+  row: number,
+  col: number,
+  value: number,
+): boolean {
   if (value < 1 || value > 9) return false;
   for (let i = 0; i < 9; i += 1) {
     if (grid[row][i] === value) return false;

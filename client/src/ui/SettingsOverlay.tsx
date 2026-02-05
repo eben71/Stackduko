@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSettingsStore } from "@/store/settingsStore";
-import { resetProgress } from "@/game/state/storage";
+import { resetProgress, type Settings } from "@/game/state/storage";
 
 interface SettingsOverlayProps {
   open: boolean;
@@ -83,7 +83,7 @@ export function SettingsOverlay({
     (focusables[0] ?? panel).focus();
   }, [open, confirmTarget]);
 
-  const difficultyOptions = useMemo(
+  const difficultyOptions = useMemo<Array<{ value: Settings["defaultDifficulty"]; label: string }>>(
     () => [
       { value: "easy", label: "Easy" },
       { value: "medium", label: "Medium" },
@@ -95,7 +95,12 @@ export function SettingsOverlay({
   if (!open) return null;
 
   return (
-    <div className="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div
+      className="settings-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
       <div className="settings-backdrop" onClick={onClose} />
       <div className="settings-panel" ref={panelRef} tabIndex={-1}>
         <div className="settings-header">
@@ -103,7 +108,12 @@ export function SettingsOverlay({
             <h2 id="settings-title">Settings</h2>
             <p className="settings-subtitle">Changes save automatically.</p>
           </div>
-          <button className="settings-close" type="button" onClick={onClose} aria-label="Close settings">
+          <button
+            className="settings-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Close settings"
+          >
             ×
           </button>
         </div>
@@ -126,7 +136,7 @@ export function SettingsOverlay({
                     checked={settings.defaultDifficulty === option.value}
                     onChange={() =>
                       updateSettings({
-                        defaultDifficulty: option.value as any,
+                        defaultDifficulty: option.value,
                       })
                     }
                   />
@@ -147,9 +157,7 @@ export function SettingsOverlay({
               <input
                 type="checkbox"
                 checked={settings.tileNumbersVisible}
-                onChange={(event) =>
-                  updateSettings({ tileNumbersVisible: event.target.checked })
-                }
+                onChange={(event) => updateSettings({ tileNumbersVisible: event.target.checked })}
               />
               <span />
             </label>
@@ -174,9 +182,7 @@ export function SettingsOverlay({
                 min={0}
                 max={10}
                 value={settings.hintsPerLevel}
-                onChange={(event) =>
-                  updateSettings({ hintsPerLevel: Number(event.target.value) })
-                }
+                onChange={(event) => updateSettings({ hintsPerLevel: Number(event.target.value) })}
               />
               <button
                 type="button"
@@ -221,9 +227,7 @@ export function SettingsOverlay({
                   max={50}
                   disabled={settings.undoLimit === null}
                   value={settings.undoLimit ?? 0}
-                  onChange={(event) =>
-                    updateSettings({ undoLimit: Number(event.target.value) })
-                  }
+                  onChange={(event) => updateSettings({ undoLimit: Number(event.target.value) })}
                 />
                 <button
                   type="button"
@@ -366,19 +370,33 @@ export function SettingsOverlay({
               <div className="settings-label">Reset progress</div>
               <div className="settings-help">Clears saved progress and best scores.</div>
             </div>
-            <button type="button" className="settings-danger" onClick={() => setConfirmTarget("progress")}>Reset Progress</button>
+            <button
+              type="button"
+              className="settings-danger"
+              onClick={() => setConfirmTarget("progress")}
+            >
+              Reset Progress
+            </button>
           </div>
           <div className="settings-row">
             <div>
               <div className="settings-label">Reset settings</div>
               <div className="settings-help">Restore defaults and save immediately.</div>
             </div>
-            <button type="button" className="settings-secondary" onClick={() => setConfirmTarget("settings")}>Reset Settings</button>
+            <button
+              type="button"
+              className="settings-secondary"
+              onClick={() => setConfirmTarget("settings")}
+            >
+              Reset Settings
+            </button>
           </div>
         </div>
 
         <div className="settings-footer">
-          <button type="button" className="settings-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="settings-secondary" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
 
@@ -392,7 +410,11 @@ export function SettingsOverlay({
                 : "Reset all settings to defaults?"}
             </p>
             <div className="settings-confirm-actions">
-              <button type="button" className="settings-secondary" onClick={() => setConfirmTarget(null)}>
+              <button
+                type="button"
+                className="settings-secondary"
+                onClick={() => setConfirmTarget(null)}
+              >
                 Cancel
               </button>
               <button

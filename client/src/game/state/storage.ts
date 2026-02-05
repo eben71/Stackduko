@@ -67,8 +67,11 @@ function getStorage(): Storage {
   if (typeof window !== "undefined" && window.localStorage) {
     return window.localStorage;
   }
-  if (typeof globalThis !== "undefined" && (globalThis as any).localStorage) {
-    return (globalThis as any).localStorage as Storage;
+  if (
+    typeof globalThis !== "undefined" &&
+    (globalThis as { localStorage?: Storage }).localStorage
+  ) {
+    return (globalThis as { localStorage?: Storage }).localStorage as Storage;
   }
 
   const memory = new Map<string, string>();
@@ -146,9 +149,7 @@ function normalizeSettings(input: unknown): Settings {
       : DEFAULT_SETTINGS.tutorialTips;
 
   const sfxEnabled =
-    typeof candidate.sfxEnabled === "boolean"
-      ? candidate.sfxEnabled
-      : DEFAULT_SETTINGS.sfxEnabled;
+    typeof candidate.sfxEnabled === "boolean" ? candidate.sfxEnabled : DEFAULT_SETTINGS.sfxEnabled;
 
   const musicEnabled =
     typeof candidate.musicEnabled === "boolean"
@@ -156,9 +157,7 @@ function normalizeSettings(input: unknown): Settings {
       : DEFAULT_SETTINGS.musicEnabled;
 
   const volume =
-    typeof candidate.volume === "number"
-      ? clamp(candidate.volume, 0, 1)
-      : DEFAULT_SETTINGS.volume;
+    typeof candidate.volume === "number" ? clamp(candidate.volume, 0, 1) : DEFAULT_SETTINGS.volume;
 
   const highContrast =
     typeof candidate.highContrast === "boolean"
@@ -166,9 +165,7 @@ function normalizeSettings(input: unknown): Settings {
       : DEFAULT_SETTINGS.highContrast;
 
   const largeText =
-    typeof candidate.largeText === "boolean"
-      ? candidate.largeText
-      : DEFAULT_SETTINGS.largeText;
+    typeof candidate.largeText === "boolean" ? candidate.largeText : DEFAULT_SETTINGS.largeText;
 
   return {
     version: 1,
@@ -217,8 +214,7 @@ function normalizeProgress(input: unknown): Progress {
       : DEFAULT_PROGRESS.totalPlays;
 
   const lastPlayedAt =
-    typeof candidate.lastPlayedAt === "string" &&
-    !Number.isNaN(Date.parse(candidate.lastPlayedAt))
+    typeof candidate.lastPlayedAt === "string" && !Number.isNaN(Date.parse(candidate.lastPlayedAt))
       ? candidate.lastPlayedAt
       : DEFAULT_PROGRESS.lastPlayedAt;
 
@@ -339,9 +335,7 @@ export const PROGRESS_STORAGE_KEY = PROGRESS_KEY;
 export const SETTINGS_DEFAULTS = DEFAULT_SETTINGS;
 export const PROGRESS_DEFAULTS = DEFAULT_PROGRESS;
 
-function normalizeHighestLevelUnlocked(
-  value: unknown,
-): Record<Difficulty, number> {
+function normalizeHighestLevelUnlocked(value: unknown): Record<Difficulty, number> {
   if (typeof value === "number") {
     const level = Math.max(1, Math.round(value));
     return { easy: level, medium: level, hard: level };
@@ -349,14 +343,9 @@ function normalizeHighestLevelUnlocked(
   if (value && typeof value === "object") {
     const candidate = value as Partial<Record<Difficulty, unknown>>;
     return {
-      easy:
-        typeof candidate.easy === "number" ? Math.max(1, Math.round(candidate.easy)) : 1,
-      medium:
-        typeof candidate.medium === "number"
-          ? Math.max(1, Math.round(candidate.medium))
-          : 1,
-      hard:
-        typeof candidate.hard === "number" ? Math.max(1, Math.round(candidate.hard)) : 1,
+      easy: typeof candidate.easy === "number" ? Math.max(1, Math.round(candidate.easy)) : 1,
+      medium: typeof candidate.medium === "number" ? Math.max(1, Math.round(candidate.medium)) : 1,
+      hard: typeof candidate.hard === "number" ? Math.max(1, Math.round(candidate.hard)) : 1,
     };
   }
   return { ...DEFAULT_PROGRESS.highestLevelUnlocked };

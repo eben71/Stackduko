@@ -1,6 +1,7 @@
 # AGENT_RULES
 
 ## Core Principles
+
 - Keep gameplay logic pure and testable.
 - Keep rendering separate from logic.
 - Preserve deterministic seed based generation.

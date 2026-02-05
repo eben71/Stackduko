@@ -10,7 +10,13 @@ export type LayoutTemplate = {
   levelBias: number;
 };
 
-function createLayer(width: number, height: number, offsetX: number, offsetY: number, z: number): TilePosition[] {
+function createLayer(
+  width: number,
+  height: number,
+  offsetX: number,
+  offsetY: number,
+  z: number,
+): TilePosition[] {
   const positions: TilePosition[] = [];
   for (let row = 0; row < height; row += 1) {
     for (let col = 0; col < width; col += 1) {

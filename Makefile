@@ -1,5 +1,10 @@
 .PHONY: setup dev check lint lint-fix format format-check test build start db-push
 
+ifeq ($(OS),Windows_NT)
+SHELL := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
+endif
+
 # setup: install dependencies.
 setup:
 	@npm install

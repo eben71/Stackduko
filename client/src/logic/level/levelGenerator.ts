@@ -36,14 +36,12 @@ export function generateLevel(options: LevelOptions): LevelData {
   while (true) {
     const rng = mulberry32(seed);
     const baseTemplate = pickLayoutTemplate(options.difficulty, options.levelNumber, rng);
-    const templates = [baseTemplate, ...getLayoutTemplates().filter((t) => t.id !== baseTemplate.id)];
+    const templates = [
+      baseTemplate,
+      ...getLayoutTemplates().filter((t) => t.id !== baseTemplate.id),
+    ];
 
-    const attempt = tryGenerateWithTemplates(
-      options,
-      rng,
-      templates,
-      attemptCap,
-    );
+    const attempt = tryGenerateWithTemplates(options, rng, templates, attemptCap);
     if (attempt) {
       return {
         ...attempt,
@@ -99,7 +97,11 @@ function tryGenerateWithTemplates(
   return null;
 }
 
-function assignTiles(solution: number[][], positions: { x: number; y: number; z: number }[], rng: Rng): TileSpec[] {
+function assignTiles(
+  solution: number[][],
+  positions: { x: number; y: number; z: number }[],
+  rng: Rng,
+): TileSpec[] {
   if (positions.length !== 81) {
     throw new Error("Layout must define 81 tile positions.");
   }

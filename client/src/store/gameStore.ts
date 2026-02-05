@@ -1,10 +1,5 @@
 import { create } from "zustand";
-import {
-  getProgress,
-  getSettings,
-  updateProgress,
-  type Difficulty,
-} from "@/game/state/storage";
+import { getProgress, getSettings, updateProgress, type Difficulty } from "@/game/state/storage";
 import { generateLevel, type LevelData } from "@/logic/level/levelGenerator";
 import { getConflictCells } from "@/logic/sudoku/validate";
 import {
@@ -119,8 +114,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const settings = getSettings();
     const difficulty = difficultyOverride ?? settings.defaultDifficulty;
     const progress = getProgress();
-    const levelNumber =
-      levelNumberOverride ?? progress.highestLevelUnlocked[difficulty];
+    const levelNumber = levelNumberOverride ?? progress.highestLevelUnlocked[difficulty];
     const seed = seedOverride ?? Date.now();
 
     const level = generateLevel({ seed, difficulty, levelNumber });
@@ -148,8 +142,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hintsRemaining: settings.hintsPerLevel,
       hintsUsed: 0,
       undoLimit: settings.undoLimit,
-      undoRemaining:
-        settings.undoLimit === null ? null : settings.undoLimit,
+      undoRemaining: settings.undoLimit === null ? null : settings.undoLimit,
       undosUsed: 0,
       moves: 0,
       timeSeconds: 0,
@@ -210,7 +203,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   finishTutorial: () => {
-    const progress = getProgress();
     updateProgress({ tutorialCompleted: true });
     set({ phase: "menu", tutorialStep: 0 });
   },
@@ -423,19 +415,16 @@ function finalizeWin(state: GameState) {
   const currentBestMoves = progress.bestMoves[key];
 
   const bestTimesMs =
-    currentBestTime === undefined || timeMs < currentBestTime
-      ? { [key]: timeMs }
-      : {};
+    currentBestTime === undefined || timeMs < currentBestTime ? { [key]: timeMs } : {};
   const bestMoves =
-    currentBestMoves === undefined || moves < currentBestMoves
-      ? { [key]: moves }
-      : {};
+    currentBestMoves === undefined || moves < currentBestMoves ? { [key]: moves } : {};
 
   updateProgress({
     totalWins: progress.totalWins + 1,
     bestTimesMs,
     bestMoves,
     highestLevelUnlocked: {
+      ...progress.highestLevelUnlocked,
       [state.difficulty]: Math.max(
         progress.highestLevelUnlocked[state.difficulty],
         state.levelNumber + 1,

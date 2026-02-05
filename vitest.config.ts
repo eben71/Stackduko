@@ -23,11 +23,7 @@ export default defineConfig({
         "client/src/store/**/*.ts",
         "client/src/logic/**/*.ts",
       ],
-      exclude: [
-        "**/*.test.ts",
-        "**/*.d.ts",
-        "**/node_modules/**",
-      ],
+      exclude: ["**/*.test.ts", "**/*.d.ts", "**/node_modules/**"],
     },
   },
   resolve: {

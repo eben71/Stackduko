@@ -12,7 +12,12 @@ export class BoardRenderer {
   private origin: { x: number; y: number };
   private cellSize: number;
 
-  constructor(scene: Phaser.Scene, origin: { x: number; y: number }, cellSize: number, settings: Settings) {
+  constructor(
+    scene: Phaser.Scene,
+    origin: { x: number; y: number },
+    cellSize: number,
+    settings: Settings,
+  ) {
     this.scene = scene;
     this.origin = origin;
     this.cellSize = cellSize;
@@ -114,7 +119,8 @@ export class BoardRenderer {
     const gridAlpha = settings.highContrast ? 0.9 : 0.6;
 
     for (let i = 0; i <= 9; i += 1) {
-      const thickness = i % 3 === 0 ? (settings.highContrast ? 5 : 3) : settings.highContrast ? 2 : 1;
+      const thickness =
+        i % 3 === 0 ? (settings.highContrast ? 5 : 3) : settings.highContrast ? 2 : 1;
       this.graphics.lineStyle(thickness, gridColor, gridAlpha);
       this.graphics.lineBetween(
         this.origin.x,

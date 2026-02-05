@@ -78,7 +78,9 @@
   height: 40px;
   border-radius: 999px;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
 }
 
 .settings-close:hover {
@@ -152,7 +154,10 @@
   font-size: 0.9rem;
   color: var(--settings-muted);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .settings-segment-option input:checked + span {

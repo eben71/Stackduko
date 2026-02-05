@@ -1,5 +1,10 @@
 import { isPlacementLegal, type SudokuGrid } from "@/logic/sudoku/validate";
-import { buildAdjacency, getFreeTiles, isFreeTile, type TileAdjacency } from "@/logic/stack/freeTile";
+import {
+  buildAdjacency,
+  getFreeTiles,
+  isFreeTile,
+  type TileAdjacency,
+} from "@/logic/stack/freeTile";
 import { type TileSpec } from "@/logic/stack/types";
 
 export type RevealedGrid = Array<Array<number | null>>;
@@ -41,7 +46,12 @@ export function cloneRevealed(grid: RevealedGrid): RevealedGrid {
   return grid.map((row) => [...row]);
 }
 
-export function isRevealLegal(revealed: RevealedGrid, row: number, col: number, value: number): boolean {
+export function isRevealLegal(
+  revealed: RevealedGrid,
+  row: number,
+  col: number,
+  value: number,
+): boolean {
   if (revealed[row][col] !== null) return false;
   const numericGrid = revealed.map((r) => r.map((cell) => cell ?? 0));
   return isPlacementLegal(numericGrid, row, col, value);
@@ -117,7 +127,12 @@ function computeMoveScore(context: SolverContext, state: SolverState, index: num
   return freeAfter * 3 + rarityScore * 2 + deadEndPenalty;
 }
 
-function computeRarityScore(revealed: RevealedGrid, row: number, col: number, value: number): number {
+function computeRarityScore(
+  revealed: RevealedGrid,
+  row: number,
+  col: number,
+  value: number,
+): number {
   let count = 0;
   for (let i = 0; i < 9; i += 1) {
     if (revealed[row][i] === value) count += 1;

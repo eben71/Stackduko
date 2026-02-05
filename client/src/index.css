@@ -1,36 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: 'Fredoka', sans-serif;
-  --font-body: 'Nunito', sans-serif;
+  --font-display: "Fredoka", sans-serif;
+  --font-body: "Nunito", sans-serif;
 
   /* Modern, Playful Palette */
   --background: 220 20% 97%;
   --foreground: 222 47% 11%;
-  
+
   --primary: 262 83% 58%;
   --primary-foreground: 210 40% 98%;
-  
+
   --secondary: 190 90% 50%; /* Cyan/Teal pop */
   --secondary-foreground: 222 47% 11%;
-  
+
   --muted: 215 25% 90%;
   --muted-foreground: 215 16% 47%;
-  
+
   --accent: 35 100% 65%; /* Orange/Yellow for emphasis */
   --accent-foreground: 222 47% 11%;
-  
+
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-  
+
   --border: 214 32% 91%;
   --input: 214 32% 91%;
   --ring: 262 83% 58%;
-  
+
   --radius: 1rem;
 }
 
@@ -40,7 +40,12 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight text-foreground;
   }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { QueryFunctionContext } from "@tanstack/react-query";
 import { cn } from "../../../client/src/lib/utils";
 import { apiRequest, getQueryFn } from "../../../client/src/lib/queryClient";
 
@@ -35,9 +36,7 @@ describe("apiRequest", () => {
   });
 
   it("throws with status and text when not ok", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new MockResponse("Bad", 400, false, "Bad Request"));
+    const fetchMock = vi.fn().mockResolvedValue(new MockResponse("Bad", 400, false, "Bad Request"));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(apiRequest("GET", "/api/scores")).rejects.toThrow("400: Bad");
@@ -46,36 +45,31 @@ describe("apiRequest", () => {
 
 describe("getQueryFn", () => {
   it("returns null on 401 when configured", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new MockResponse("{}", 401, false));
+    const fetchMock = vi.fn().mockResolvedValue(new MockResponse("{}", 401, false));
     vi.stubGlobal("fetch", fetchMock);
 
     const fn = getQueryFn({ on401: "returnNull" });
-    const result = await fn({ queryKey: ["/api/users"] } as any);
+    const context = { queryKey: ["/api/users"] } as QueryFunctionContext;
+    const result = await fn(context);
     expect(result).toBeNull();
   });
 
   it("throws on non-401 errors", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new MockResponse("Nope", 500, false));
+    const fetchMock = vi.fn().mockResolvedValue(new MockResponse("Nope", 500, false));
     vi.stubGlobal("fetch", fetchMock);
 
     const fn = getQueryFn({ on401: "throw" });
-    await expect(fn({ queryKey: ["/api/users"] } as any)).rejects.toThrow(
-      "500: Nope",
-    );
+    const context = { queryKey: ["/api/users"] } as QueryFunctionContext;
+    await expect(fn(context)).rejects.toThrow("500: Nope");
   });
 
   it("returns json on success", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new MockResponse("{\"ok\":true}", 200, true));
+    const fetchMock = vi.fn().mockResolvedValue(new MockResponse('{"ok":true}', 200, true));
     vi.stubGlobal("fetch", fetchMock);
 
     const fn = getQueryFn({ on401: "throw" });
-    const result = await fn({ queryKey: ["/api/scores"] } as any);
+    const context = { queryKey: ["/api/scores"] } as QueryFunctionContext;
+    const result = await fn(context);
     expect(result).toEqual({ ok: true });
   });
 });

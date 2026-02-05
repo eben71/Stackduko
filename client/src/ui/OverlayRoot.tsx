@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SettingsOverlay } from "@/ui/SettingsOverlay";
 import { useGameStore } from "@/store/gameStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -25,7 +25,7 @@ export function OverlayRoot() {
     restartLevel,
     quitToMenu,
     incrementTime,
-    useHint,
+    useHint: hintAction,
     undoMove,
     clearMessage,
   } = useGameStore();
@@ -33,21 +33,24 @@ export function OverlayRoot() {
   const gameState = useGameStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsOrigin, setSettingsOrigin] = useState<SettingsOrigin>("menu");
-  const [selectedDifficulty, setSelectedDifficulty] = useState(
-    settings.defaultDifficulty,
-  );
+  const [selectedDifficulty, setSelectedDifficulty] = useState(settings.defaultDifficulty);
   const [progressTick, setProgressTick] = useState(0);
-
-  const progress = useMemo(() => getProgress(), [phase, progressTick]);
+  const [progress, setProgress] = useState(() => getProgress());
 
   useEffect(() => {
     setSelectedDifficulty(settings.defaultDifficulty);
   }, [settings.defaultDifficulty]);
 
   useEffect(() => {
+    setProgress(getProgress());
+  }, [progressTick, phase]);
+  useEffect(() => {
     if (phase !== "playing" && phase !== "tutorial") return;
     const interval = setInterval(() => {
-      if (useGameStore.getState().phase === "playing" || useGameStore.getState().phase === "tutorial") {
+      if (
+        useGameStore.getState().phase === "playing" ||
+        useGameStore.getState().phase === "tutorial"
+      ) {
         incrementTime();
       }
     }, 1000);
@@ -107,12 +110,16 @@ export function OverlayRoot() {
         />
       )}
 
-      {(phase === "playing" || phase === "paused" || phase === "win" || phase === "stuck" || phase === "tutorial") && (
+      {(phase === "playing" ||
+        phase === "paused" ||
+        phase === "win" ||
+        phase === "stuck" ||
+        phase === "tutorial") && (
         <Hud
           state={gameState}
           onPause={pauseGame}
           onHint={() => {
-            useHint();
+            hintAction();
           }}
           onUndo={() => {
             undoMove();
@@ -134,7 +141,9 @@ export function OverlayRoot() {
         <WinModal
           state={gameState}
           onNext={() => startGame(gameState.difficulty, gameState.levelNumber + 1)}
-          onReplay={() => startGame(gameState.difficulty, gameState.levelNumber, gameState.seed ?? Date.now())}
+          onReplay={() =>
+            startGame(gameState.difficulty, gameState.levelNumber, gameState.seed ?? Date.now())
+          }
           onQuit={quitToMenu}
         />
       )}
@@ -143,18 +152,13 @@ export function OverlayRoot() {
         <StuckModal
           state={gameState}
           onUndo={() => undoMove()}
-          onHint={() => useHint()}
+          onHint={() => hintAction()}
           onRestart={restartLevel}
           onQuit={quitToMenu}
         />
       )}
 
-      {phase === "tutorial" && (
-        <TutorialOverlay
-          state={gameState}
-          onFinish={finishTutorial}
-        />
-      )}
+      {phase === "tutorial" && <TutorialOverlay state={gameState} onFinish={finishTutorial} />}
 
       {gameState.lastMessage && settings.tutorialTips && (
         <div className="overlay-toast" role="status">
@@ -286,7 +290,8 @@ function Hud({
   onUndo: () => void;
   onRestart: () => void;
 }) {
-  const undoDisabled = state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
+  const undoDisabled =
+    state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
   const hintDisabled = state.hintsRemaining <= 0;
   const showPause = state.phase === "playing" || state.phase === "tutorial";
   return (
@@ -307,7 +312,8 @@ function Hud({
         <div className="hud-card">
           <div className="hud-label">Time</div>
           <div className="hud-value">
-            {Math.floor(state.timeSeconds / 60)}:{(state.timeSeconds % 60).toString().padStart(2, "0")}
+            {Math.floor(state.timeSeconds / 60)}:
+            {(state.timeSeconds % 60).toString().padStart(2, "0")}
           </div>
         </div>
         {showPause && (
@@ -429,7 +435,8 @@ function StuckModal({
   onRestart: () => void;
   onQuit: () => void;
 }) {
-  const undoDisabled = state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
+  const undoDisabled =
+    state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
   const hintDisabled = state.hintsRemaining <= 0;
   return (
     <div className="overlay-modal">
@@ -454,13 +461,7 @@ function StuckModal({
   );
 }
 
-function TutorialOverlay({
-  state,
-  onFinish,
-}: {
-  state: GameSnapshot;
-  onFinish: () => void;
-}) {
+function TutorialOverlay({ state, onFinish }: { state: GameSnapshot; onFinish: () => void }) {
   const step = state.tutorialStep;
   const canFinish = step >= 5 && state.tutorialMovesDone >= state.tutorialMovesRequired;
 

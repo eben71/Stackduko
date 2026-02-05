@@ -6,13 +6,13 @@ import { DifficultyScene } from "@/game/scenes/DifficultyScene";
 import { TutorialScene } from "@/game/scenes/TutorialScene";
 import { GameScene } from "@/game/scenes/GameScene";
 import { gameEvents, GameEvent } from "@/game/events";
-import { useGameStore } from "@/store/gameStore";
+import { useGameStore, type GamePhase } from "@/store/gameStore";
 import { useSettingsStore } from "@/store/settingsStore";
 
 export const StackdokuGame: React.FC = () => {
   const gameRef = useRef<HTMLDivElement>(null);
   const phaserGameRef = useRef<Phaser.Game | null>(null);
-  const phase = useGameStore((state) => state.phase);
+  const phase = useGameStore((state) => state.phase as GamePhase);
   const seed = useGameStore((state) => state.seed);
   const pausedFrom = useGameStore((state) => state.pausedFrom);
   const settings = useSettingsStore((state) => state.settings);
@@ -55,34 +55,36 @@ export const StackdokuGame: React.FC = () => {
     const game = phaserGameRef.current;
     if (!game) return;
 
-    if (phase === "menu" || phase === "difficulty") {
+    const phaseValue: GamePhase = phase;
+
+    if (phaseValue === "menu" || phaseValue === "difficulty") {
       game.scene.stop("GameScene");
     }
-    if (phase !== "tutorial") {
+    if (phaseValue !== "tutorial") {
       game.scene.stop("TutorialScene");
     }
 
-    if (phase === "menu") {
+    if (phaseValue === "menu") {
       game.scene.start("MenuScene");
       return;
     }
 
-    if (phase === "difficulty") {
+    if (phaseValue === "difficulty") {
       game.scene.start("DifficultyScene");
       return;
     }
 
-    if (phase === "tutorial") {
+    if (phaseValue === "tutorial") {
       game.scene.stop("TutorialScene");
       game.scene.start("TutorialScene");
       return;
     }
 
     if (
-      phase === "playing" ||
-      (phase === "paused" && pausedFrom !== "tutorial") ||
-      phase === "win" ||
-      phase === "stuck"
+      phaseValue === "playing" ||
+      (phaseValue === "paused" && pausedFrom !== "tutorial") ||
+      phaseValue === "win" ||
+      phaseValue === "stuck"
     ) {
       const shouldRestart = seed !== null && seed !== lastSeedRef.current;
       if (!game.scene.isActive("GameScene") || shouldRestart) {
@@ -90,15 +92,11 @@ export const StackdokuGame: React.FC = () => {
         game.scene.start("GameScene");
         lastSeedRef.current = seed ?? null;
       }
-      if (phase === "paused") {
+      if (phaseValue === "paused") {
         game.scene.pause(pausedFrom === "tutorial" ? "TutorialScene" : "GameScene");
       } else {
         game.scene.resume("GameScene");
       }
-    }
-
-    if (phase === "tutorial") {
-      game.scene.resume("TutorialScene");
     }
   }, [phase, seed, pausedFrom]);
 

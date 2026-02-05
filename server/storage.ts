@@ -1,5 +1,12 @@
 import { db } from "./db";
-import { users, scores, type User, type InsertUser, type Score, type InsertScore } from "@shared/schema";
+import {
+  users,
+  scores,
+  type User,
+  type InsertUser,
+  type Score,
+  type InsertScore,
+} from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -39,14 +46,14 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select({
         score: scores,
-        user: users
+        user: users,
       })
       .from(scores)
       .leftJoin(users, eq(scores.userId, users.id))
       .orderBy(desc(scores.score))
       .limit(limit);
 
-    return results.map(r => ({ ...r.score, user: r.user ?? undefined }));
+    return results.map((r) => ({ ...r.score, user: r.user ?? undefined }));
   }
 }
 
