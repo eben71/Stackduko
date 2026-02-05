@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: stackdoku-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stackdoku
+      POSTGRES_PASSWORD: stackdoku
+      POSTGRES_DB: stackdoku
+    ports:
+      - "5432:5432"
+    volumes:
+      - stackdoku-db:/var/lib/postgresql/data
+volumes:
+  stackdoku-db:

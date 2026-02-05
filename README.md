@@ -13,6 +13,14 @@
 - npm run test
 - npm run build
 
+## Database
+
+- Install Docker Desktop and ensure Docker is running.
+- Start Postgres with `make db-up`.
+- Set `DATABASE_URL` in `.env` to match the Docker defaults.
+- Apply schema with `make db-push`.
+- Stop the database with `make db-down`.
+
 ## Controls
 
 - Tap or click a free tile to remove it.
