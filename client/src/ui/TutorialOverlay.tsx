@@ -67,8 +67,8 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
   return (
     <div className="tutorial-overlay">
       <div className="tutorial-compact">
-        <button 
-          className="help-button" 
+        <button
+          className="help-button"
           onClick={() => setShowFullDetails(true)}
           title="How to play"
         >
@@ -94,8 +94,8 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
               <div className="tutorial-section">
                 <div className="tutorial-heading">How to Play</div>
                 <div className="tutorial-objective">
-                  Reveal every tile by removing free tiles. Each removed tile reveals its number on the
-                  Sudoku grid. At the end, the grid must form a valid Sudoku.
+                  Reveal every tile by removing free tiles. Each removed tile reveals its number on
+                  the Sudoku grid. At the end, the grid must form a valid Sudoku.
                 </div>
               </div>
 
@@ -114,8 +114,9 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
               <div className="tutorial-section">
                 <div className="tutorial-heading">Sudoku rules</div>
                 <div className="tutorial-body">
-                  Duplicates are not allowed in any row, column, or 3x3 box. When a move is illegal, the
-                  grid highlights the conflicting cells so you can see where the duplicate appears.
+                  Duplicates are not allowed in any row, column, or 3x3 box. When a move is illegal,
+                  the grid highlights the conflicting cells so you can see where the duplicate
+                  appears.
                 </div>
               </div>
 
@@ -123,18 +124,20 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
                 <div className="tutorial-heading">Tools and Strategy</div>
                 <ul className="tutorial-list">
                   <li>
-                    <strong>Undo</strong> restores your last removed tile and is limited by settings.
-                  </li>
-                  <li>
-                    <strong>Hint</strong> highlights a safe tile when you are stuck and is limited by
+                    <strong>Undo</strong> restores your last removed tile and is limited by
                     settings.
                   </li>
                   <li>
-                    <strong>Tray</strong> shows your last few moves, so avoid filling it to keep options
-                    open.
+                    <strong>Hint</strong> highlights a safe tile when you are stuck and is limited
+                    by settings.
                   </li>
                   <li>
-                    Strategy tip: start with tiles that open access to more tiles or reveal rarer numbers.
+                    <strong>Tray</strong> shows your last few moves, so avoid filling it to keep
+                    options open.
+                  </li>
+                  <li>
+                    Strategy tip: start with tiles that open access to more tiles or reveal rarer
+                    numbers.
                   </li>
                 </ul>
               </div>
