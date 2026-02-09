@@ -506,8 +506,7 @@ function TutorialOverlay({ state, onFinish }: { state: GameSnapshot; onFinish: (
 
   if (step >= 5) {
     message = "Make a few more moves, then finish the tutorial.";
-    reason =
-      "Keep the tray from filling up, and watch for legal placements as numbers appear.";
+    reason = "Keep the tray from filling up, and watch for legal placements as numbers appear.";
   }
 
   return (
