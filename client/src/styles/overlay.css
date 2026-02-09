@@ -311,8 +311,31 @@
   margin-bottom: 8px;
 }
 
+.tutorial-objective {
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--overlay-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.tutorial-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--overlay-muted);
+  margin-top: 10px;
+}
+
 .tutorial-message {
   color: var(--overlay-muted);
+  margin-bottom: 12px;
+}
+
+.tutorial-tip {
+  color: #1f2937;
   margin-bottom: 12px;
 }
 

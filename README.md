@@ -8,18 +8,13 @@
 
 ## Run Locally
 
-- npm install
-- npm run dev
-- npm run test
-- npm run build
+- Ensure Docker Desktop is running.
+- Copy `.env.example` to `.env` and keep `DATABASE_URL` set to the local Docker value.
+- Run `make dev`.
 
 ## Database
 
-- Install Docker Desktop and ensure Docker is running.
-- Start Postgres with `make db-up`.
-- Set `DATABASE_URL` in `.env` to match the Docker defaults.
-- Apply schema with `make db-push`.
-- Stop the database with `make db-down`.
+- The local dev command starts Postgres, waits for readiness, and applies schema automatically.
 
 ## Controls
 

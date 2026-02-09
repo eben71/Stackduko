@@ -97,6 +97,17 @@ export function OverlayRoot() {
           onPlay={() => useGameStore.getState().setPhase("difficulty")}
           onTutorial={() => startTutorial()}
           onOptions={() => openSettings("menu")}
+          onQuit={() => {
+            window.open("", "_self");
+            window.close();
+            setTimeout(() => {
+              if (!window.closed) {
+                window.alert(
+                  "Your browser blocked closing this tab. Please close it manually (Ctrl+W / Cmd+W).",
+                );
+              }
+            }, 150);
+          }}
         />
       )}
 
@@ -195,12 +206,14 @@ function MainMenu({
   onPlay,
   onTutorial,
   onOptions,
+  onQuit,
 }: {
   canContinue: boolean;
   onContinue: () => void;
   onPlay: () => void;
   onTutorial: () => void;
   onOptions: () => void;
+  onQuit: () => void;
 }) {
   return (
     <div className="overlay-screen menu-screen">
@@ -221,6 +234,9 @@ function MainMenu({
           </button>
           <button className="menu-secondary" onClick={onOptions}>
             Options
+          </button>
+          <button className="menu-secondary" onClick={onQuit}>
+            Quit
           </button>
         </div>
       </div>
@@ -465,18 +481,46 @@ function TutorialOverlay({ state, onFinish }: { state: GameSnapshot; onFinish: (
   const step = state.tutorialStep;
   const canFinish = step >= 5 && state.tutorialMovesDone >= state.tutorialMovesRequired;
 
-  let message = "Tap a glowing free tile to begin.";
-  if (step === 1) message = "Great. Now tap a blocked tile to see why it is locked.";
-  if (step === 2) message = "Try the highlighted tile to see an illegal move.";
-  if (step === 3) message = "Use Undo to restore the last tile.";
-  if (step === 4) message = "Use Hint to highlight a safe move.";
-  if (step >= 5) message = "Make a few more moves, then finish the tutorial.";
+  let message = "Tap a glowing free tile to remove it.";
+  let reason = "Free tiles have at least one open side and can be removed.";
+
+  if (step === 1) {
+    message = "Tap a blocked tile.";
+    reason = "Blocked tiles are locked because they have tiles on both sides.";
+  }
+
+  if (step === 2) {
+    message = "Try the highlighted tile to see an illegal move.";
+    reason = "Revealed numbers must follow Sudoku rules: no duplicates in row, column, or box.";
+  }
+
+  if (step === 3) {
+    message = "Use Undo to restore the last tile.";
+    reason = "Undo lets you recover from a bad move. It may be limited by settings.";
+  }
+
+  if (step === 4) {
+    message = "Use Hint to highlight a safe move.";
+    reason = "Hints point to a legal reveal when you are stuck.";
+  }
+
+  if (step >= 5) {
+    message = "Make a few more moves, then finish the tutorial.";
+    reason =
+      "Keep the tray from filling up, and watch for legal placements as numbers appear.";
+  }
 
   return (
     <div className="tutorial-overlay">
       <div className="tutorial-card">
         <div className="tutorial-title">Tutorial</div>
+        <div className="tutorial-objective">
+          Objective: clear all tiles by revealing numbers that obey Sudoku rules.
+        </div>
+        <div className="tutorial-label">What to do</div>
         <div className="tutorial-message">{message}</div>
+        <div className="tutorial-label">Why it matters</div>
+        <div className="tutorial-tip">{reason}</div>
         {canFinish && (
           <button className="menu-primary" onClick={onFinish}>
             Finish Tutorial
