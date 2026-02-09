@@ -44,9 +44,12 @@ export function solveSudoku(board: number[][]): boolean {
   return true;
 }
 
-export function generateSudoku(difficulty: 'easy' | 'medium' | 'hard' = 'medium'): number[][] {
+export function generateSudoku(difficulty: "easy" | "medium" | "hard" = "medium"): number[][] {
+  void difficulty;
   // 1. Start with empty board
-  const board = Array(9).fill(null).map(() => Array(9).fill(BLANK));
+  const board = Array(9)
+    .fill(null)
+    .map(() => Array(9).fill(BLANK));
 
   // 2. Fill diagonal boxes (independent, valid) to ensure randomness
   for (let i = 0; i < 9; i = i + 3) {

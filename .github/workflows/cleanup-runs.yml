@@ -1,0 +1,49 @@
+name: Cleanup Workflow Runs
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Cleanup old runs
+        env:
+          RETAIN_PER_BRANCH: 20
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Requires GitHub CLI (`gh`) to be available in the runner.
+          # RETAIN_PER_BRANCH controls how many recent runs to keep per branch.
+
+          REPO="${GITHUB_REPOSITORY}"
+          gh api -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/actions/runs" --paginate \
+            | jq -c '.workflow_runs[]' \
+            | while read -r run; do
+                branch=$(echo "$run" | jq -r '.head_branch')
+                run_id=$(echo "$run" | jq -r '.id')
+                updated_at=$(echo "$run" | jq -r '.updated_at')
+
+                if [ -z "$branch" ] || [ "$branch" = "null" ]; then
+                  echo "Deleting run $run_id (no branch)"
+                  gh api -X DELETE "/repos/${REPO}/actions/runs/${run_id}"
+                  continue
+                fi
+
+                count=$(gh api -H "Accept: application/vnd.github+json" \
+                  "/repos/${REPO}/actions/runs?branch=${branch}&per_page=100" \
+                  | jq '.workflow_runs | length')
+
+                if [ "$count" -gt "$RETAIN_PER_BRANCH" ]; then
+                  echo "Deleting run $run_id for branch $branch (exceeds retention)"
+                  gh api -X DELETE "/repos/${REPO}/actions/runs/${run_id}"
+                else
+                  echo "Keeping run $run_id for branch $branch"
+                fi
+              done

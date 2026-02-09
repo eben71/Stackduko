@@ -1,0 +1,46 @@
+.PHONY: setup dev check lint lint-fix format format-check test build start
+
+ifeq ($(OS),Windows_NT)
+SHELL := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
+endif
+
+# setup: install dependencies.
+setup:
+	@npm install
+
+# dev: start docker, provision the database, and run the app.
+dev:
+	@powershell -NoProfile -ExecutionPolicy Bypass -File ./script/dev.ps1
+
+# check: run TypeScript type checks.
+check:
+	@npm run check
+
+# lint: run ESLint.
+lint:
+	@npm run lint
+
+# lint-fix: auto-fix lint issues where possible.
+lint-fix:
+	@npm run lint:fix
+
+# format: apply Prettier formatting.
+format:
+	@npm run format
+
+# format-check: verify Prettier formatting.
+format-check:
+	@npm run format:check
+
+# test: run unit tests with coverage.
+test:
+	@npm run test
+
+# build: build client + server bundles.
+build:
+	@npm run build
+
+# start: run the production server from dist/.
+start:
+	@npm run start

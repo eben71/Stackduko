@@ -13,6 +13,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
+
 - **React 18** with TypeScript for UI components and routing
 - **Phaser 3** for game rendering and input handling within a canvas element
 - **Zustand** for global state management bridging React and Phaser
@@ -24,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 The game uses a clear separation: React renders the HTML overlay (menus, HUD, score displays) while Phaser manages the WebGL/Canvas game scene. Communication between them happens through the Zustand store.
 
 ### Backend Architecture
+
 - **Express 5** REST API server running on Node.js
 - **TypeScript** throughout with ES modules
 - **Drizzle ORM** for type-safe database operations
@@ -31,18 +33,21 @@ The game uses a clear separation: React renders the HTML overlay (menus, HUD, sc
 - API routes defined in `/shared/routes.ts` with Zod validation schemas
 
 ### Data Storage
+
 - **PostgreSQL** database for persistent storage
 - **Drizzle ORM** with drizzle-zod for schema validation
 - Two main tables: `users` (guest accounts) and `scores` (leaderboard entries)
 - Database connection via `DATABASE_URL` environment variable
 
 ### Build System
+
 - **Vite** for frontend development and bundling
 - **esbuild** for server bundling in production
 - Custom build script at `/script/build.ts` that bundles both client and server
 - Output: client assets to `dist/public`, server to `dist/index.cjs`
 
 ### Project Structure
+
 ```
 client/           # React frontend application
   src/
@@ -65,10 +70,12 @@ shared/           # Shared code between client/server
 ## External Dependencies
 
 ### Database
+
 - PostgreSQL database (connection string via `DATABASE_URL` environment variable)
 - Drizzle Kit for database migrations (`npm run db:push`)
 
 ### Key NPM Packages
+
 - **phaser**: Game engine for 2D/isometric rendering
 - **zustand**: State management for React-Phaser bridge
 - **@tanstack/react-query**: Server state management
@@ -77,9 +84,11 @@ shared/           # Shared code between client/server
 - **zod**: Runtime type validation for API contracts
 
 ### Replit-Specific Integrations
+
 - `@replit/vite-plugin-runtime-error-modal`: Development error overlay
 - `@replit/vite-plugin-cartographer`: Development tooling
 - `@replit/vite-plugin-dev-banner`: Development environment indicator
 
 ### Fonts (External)
+
 - Google Fonts: Fredoka (display), Nunito (body), DM Sans, Fira Code, Geist Mono
