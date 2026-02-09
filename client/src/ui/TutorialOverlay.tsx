@@ -110,7 +110,7 @@ export function TutorialOverlay({ state, onFinish, onAdvance }: TutorialOverlayP
         <div className="tutorial-header">
           <div>
             <div className="tutorial-title">Tutorial</div>
-            <div className="tutorial-step">Step {Math.min(step + 1, 9)} of 9</div>
+            <div className="tutorial-step">{`Step ${Math.min(step + 1, 9)} of 9`}</div>
           </div>
         </div>
 
