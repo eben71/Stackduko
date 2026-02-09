@@ -11,5 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - stackdoku-db:/var/lib/postgresql/data
+      # Run your exported schema on first startup
+      - ./docs/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
 volumes:
   stackdoku-db:
