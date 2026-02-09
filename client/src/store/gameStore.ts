@@ -224,8 +224,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   quitToMenu: () => set({ phase: "menu", pausedFrom: null }),
 
   restartLevel: () => {
-    const { difficulty, levelNumber, seed, phase } = get();
-    if (phase === "tutorial") {
+    const { difficulty, levelNumber, seed, phase, pausedFrom } = get();
+    if (phase === "tutorial" || (phase === "paused" && pausedFrom === "tutorial")) {
       get().startTutorial();
       return;
     }

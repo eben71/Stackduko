@@ -134,12 +134,19 @@ export class GameScene extends Phaser.Scene {
   private createTiles() {
     const state = useGameStore.getState();
     state.tiles.forEach((tile, index) => {
-      const position = this.computeTilePosition(tile);
-      const sprite = new TileSprite(this, index, tile, position, this.settings);
-      sprite.container.setDepth(tile.z * 1000 + position.y);
-      sprite.setInteractive(() => this.handleTileClick(index));
-      this.tiles.set(index, sprite);
+      this.createTileSprite(index);
     });
+  }
+
+  private createTileSprite(index: number) {
+    const state = useGameStore.getState();
+    const tile = state.tiles[index];
+    if (!tile) return;
+    const position = this.computeTilePosition(tile);
+    const sprite = new TileSprite(this, index, tile, position, this.settings);
+    sprite.container.setDepth(tile.z * 1000 + position.y);
+    sprite.setInteractive(() => this.handleTileClick(index));
+    this.tiles.set(index, sprite);
   }
 
   private createBoard() {
@@ -181,6 +188,12 @@ export class GameScene extends Phaser.Scene {
     const context = state.solverContext;
 
     this.boardRenderer?.updateRevealed(state.revealed);
+
+    state.tiles.forEach((_, index) => {
+      if (!state.present[index]) return;
+      if (this.tiles.has(index)) return;
+      this.createTileSprite(index);
+    });
 
     this.tiles.forEach((tileSprite, index) => {
       if (!state.present[index]) return;
