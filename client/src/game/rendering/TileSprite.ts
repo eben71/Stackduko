@@ -70,10 +70,14 @@ export class TileSprite {
     }
   }
 
-  setInteractive(onClick: () => void) {
+  setInteractive(onClick: () => void, onHover?: (hovered: boolean) => void) {
     const hitArea = new Phaser.Geom.Rectangle(-30, -30, 60, 60);
     this.container.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
     this.container.on("pointerdown", onClick);
+    if (onHover) {
+      this.container.on("pointerover", () => onHover(true));
+      this.container.on("pointerout", () => onHover(false));
+    }
   }
 
   shake(duration: number) {

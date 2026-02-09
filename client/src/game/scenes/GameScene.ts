@@ -12,6 +12,8 @@ const ISO_OFFSET_Y = 10;
 export class GameScene extends Phaser.Scene {
   private tiles: Map<number, TileSprite> = new Map();
   private boardRenderer?: BoardRenderer;
+  private gridLabel?: Phaser.GameObjects.Text;
+  private revealTooltip?: Phaser.GameObjects.Text;
   private settings: Settings = getSettings();
   private unsubscribeStore?: () => void;
   private layout = {
@@ -109,6 +111,10 @@ export class GameScene extends Phaser.Scene {
       this.boardRenderer.updateSettings(this.settings);
     }
 
+    if (this.gridLabel) {
+      this.gridLabel.setPosition(gridOriginX, gridOriginY - 26);
+    }
+
     this.tiles.forEach((tileSprite) => {
       const position = this.computeTilePosition(tileSprite.tile);
       tileSprite.container.setPosition(position.x, position.y);
@@ -145,7 +151,10 @@ export class GameScene extends Phaser.Scene {
     const position = this.computeTilePosition(tile);
     const sprite = new TileSprite(this, index, tile, position, this.settings);
     sprite.container.setDepth(tile.z * 1000 + position.y);
-    sprite.setInteractive(() => this.handleTileClick(index));
+    sprite.setInteractive(
+      () => this.handleTileClick(index),
+      (hovered) => this.handleTileHover(index, hovered),
+    );
     this.tiles.set(index, sprite);
   }
 
@@ -158,6 +167,21 @@ export class GameScene extends Phaser.Scene {
         this.layout.cellSize,
         this.settings,
       );
+    }
+    if (!this.gridLabel) {
+      this.gridLabel = this.add
+        .text(
+          this.layout.gridOriginX,
+          this.layout.gridOriginY - 26,
+          "Revealed Sudoku (auto-filled)",
+          {
+            fontFamily: "Fredoka, sans-serif",
+            fontSize: "16px",
+            color: "#64748b",
+          },
+        )
+        .setOrigin(0, 0.5)
+        .setDepth(20);
     }
   }
 
@@ -189,9 +213,28 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private handleTileHover(index: number, hovered: boolean) {
+    if (!hovered) return;
+    const tileSprite = this.tiles.get(index);
+    if (!tileSprite) return;
+    const phase = useGameStore.getState().phase;
+    if (phase !== "playing" && phase !== "tutorial") return;
+    this.showRevealTooltip(tileSprite);
+  }
+
   private showRevealTooltip(tileSprite: TileSprite) {
+    const state = useGameStore.getState();
+    if (!state.solverContext) return;
+    const isFree = isTileFree(state.solverContext, state, tileSprite.index);
+    if (!isFree) return;
+
     const tile = tileSprite.tile;
-    const label = `Reveals Row ${tile.row + 1} Col ${tile.col + 1}`;
+    const labelBase = `Reveals: R${tile.row + 1} C${tile.col + 1}`;
+    const label = this.settings.tileNumbersVisible
+      ? `${labelBase} = ${tile.value}`
+      : labelBase;
+
+    this.revealTooltip?.destroy();
     const tooltip = this.add
       .text(tileSprite.container.x, tileSprite.container.y - 40, label, {
         fontFamily: "Fredoka, sans-serif",
@@ -203,6 +246,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100000)
       .setAlpha(0.95);
+    this.revealTooltip = tooltip;
 
     this.tweens.add({
       targets: tooltip,
@@ -210,7 +254,12 @@ export class GameScene extends Phaser.Scene {
       y: tileSprite.container.y - 60,
       duration: 900,
       ease: "Quad.easeOut",
-      onComplete: () => tooltip.destroy(),
+      onComplete: () => {
+        tooltip.destroy();
+        if (this.revealTooltip === tooltip) {
+          this.revealTooltip = undefined;
+        }
+      },
     });
   }
 
@@ -245,6 +294,7 @@ export class GameScene extends Phaser.Scene {
       tileSprite.setTextColor(next.highContrast ? "#0f172a" : "#475569");
     });
     this.boardRenderer?.updateSettings(next);
+    this.gridLabel?.setColor(next.highContrast ? "#0f172a" : "#64748b");
   }
 
   private getAnimDuration(base: number) {
