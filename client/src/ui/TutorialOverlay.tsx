@@ -22,28 +22,32 @@ function getStepCopy(step: number): StepCopy {
   if (step === 2) {
     return {
       message: "Tap the highlighted tile that causes a Sudoku conflict.",
-      reason: "Duplicates are not allowed in any row, column, or 3x3 box, so conflicts are rejected.",
+      reason:
+        "Duplicates are not allowed in any row, column, or 3x3 box, so conflicts are rejected.",
     };
   }
 
   if (step === 3) {
     return {
       message: "Use Undo to restore the last removed tile.",
-      reason: "Undo helps recover from mistakes, but the number of uses can be limited by settings.",
+      reason:
+        "Undo helps recover from mistakes, but the number of uses can be limited by settings.",
     };
   }
 
   if (step === 4) {
     return {
       message: "Use Hint to highlight a legal move.",
-      reason: "Hints point to a safe tile when you feel stuck, but the count is limited by settings.",
+      reason:
+        "Hints point to a safe tile when you feel stuck, but the count is limited by settings.",
     };
   }
 
   if (step >= 5) {
     return {
       message: "Make three more moves, then finish the tutorial.",
-      reason: "Keep the tray from filling, watch Sudoku legality, and press Finish Tutorial when ready.",
+      reason:
+        "Keep the tray from filling, watch Sudoku legality, and press Finish Tutorial when ready.",
     };
   }
 
