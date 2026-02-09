@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict jdPwbooecnDs5q8wuD13awPuTFCmUzet10XfyjSpCFUo0FSRcmdpdi1FJXxVrcb
+\restrict 3l0fODh9F1QJwTIfoxqjtq0ObfSE2XhWf6kbBhaTUVLMbAROVdq8kkgxSGKhZgd
 
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.10
@@ -140,5 +140,5 @@ ALTER TABLE ONLY public.scores
 -- PostgreSQL database dump complete
 --
 
-\unrestrict jdPwbooecnDs5q8wuD13awPuTFCmUzet10XfyjSpCFUo0FSRcmdpdi1FJXxVrcb
+\unrestrict 3l0fODh9F1QJwTIfoxqjtq0ObfSE2XhWf6kbBhaTUVLMbAROVdq8kkgxSGKhZgd
 
