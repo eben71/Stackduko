@@ -245,7 +245,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     if (state.tray.length >= state.trayLimit) {
-      set({ lastMessage: "Tray full. Undo or restart." });
+      set({ lastMessage: "Undo stack full. Undo or restart." });
       return { ok: false, reason: "tray-full" };
     }
 

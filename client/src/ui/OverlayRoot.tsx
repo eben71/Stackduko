@@ -342,7 +342,7 @@ function Hud({
 
       <div className="hud-bottom">
         <div className="tray">
-          <div className="tray-label">Tray</div>
+          <div className="tray-label">Undo Stack</div>
           <div className="tray-items">
             {state.tray.length === 0 && <div className="tray-empty">No tiles removed yet.</div>}
             {state.tray.map((index, idx) => (

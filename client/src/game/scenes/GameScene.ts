@@ -162,8 +162,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleTileClick(index: number) {
-    const result = useGameStore.getState().attemptRemoveTile(index);
     const tileSprite = this.tiles.get(index);
+    if (tileSprite) {
+      const phase = useGameStore.getState().phase;
+      if (phase === "playing" || phase === "tutorial") {
+        this.showRevealTooltip(tileSprite);
+      }
+    }
+
+    const result = useGameStore.getState().attemptRemoveTile(index);
     if (!tileSprite) return;
 
     if (!result.ok) {
@@ -179,6 +186,31 @@ export class GameScene extends Phaser.Scene {
     tileSprite.remove(duration, () => {
       this.tiles.delete(index);
       this.syncFromStore();
+    });
+  }
+
+  private showRevealTooltip(tileSprite: TileSprite) {
+    const tile = tileSprite.tile;
+    const label = `Reveals Row ${tile.row + 1} Col ${tile.col + 1}`;
+    const tooltip = this.add
+      .text(tileSprite.container.x, tileSprite.container.y - 40, label, {
+        fontFamily: "Fredoka, sans-serif",
+        fontSize: "16px",
+        color: "#0f172a",
+        backgroundColor: "rgba(255, 255, 255, 0.92)",
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(0.5)
+      .setDepth(100000)
+      .setAlpha(0.95);
+
+    this.tweens.add({
+      targets: tooltip,
+      alpha: 0,
+      y: tileSprite.container.y - 60,
+      duration: 900,
+      ease: "Quad.easeOut",
+      onComplete: () => tooltip.destroy(),
     });
   }
 

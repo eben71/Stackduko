@@ -48,7 +48,7 @@ function getStepCopy(step: number): StepCopy {
     return {
       message: "Make three more moves, then finish the tutorial.",
       reason:
-        "Keep the tray from filling, watch Sudoku legality, and press Finish Tutorial when ready.",
+        "Keep the undo stack from filling, watch Sudoku legality, and press Finish Tutorial when ready.",
     };
   }
 
@@ -97,6 +97,12 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
                   Reveal every tile by removing free tiles. Each removed tile reveals its number on
                   the Sudoku grid. At the end, the grid must form a valid Sudoku.
                 </div>
+                <ul className="tutorial-list">
+                  <li>Each tile is bound to a Sudoku cell (row and column).</li>
+                  <li>Removing a tile reveals that number in its cell automatically.</li>
+                  <li>The grid is not a placement board; it shows revealed progress.</li>
+                  <li>The undo stack is a history of moves, not storage for later placement.</li>
+                </ul>
               </div>
 
               <div className="tutorial-section">
@@ -106,7 +112,7 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
                   <li>At least one horizontal side is open.</li>
                 </ul>
                 <div className="tutorial-diagram" aria-hidden="true">
-                  <div className="tutorial-diagram-row">Open side → [Tile] ← Blocked side</div>
+                  <div className="tutorial-diagram-row">Open side -> [Tile] <- Blocked side</div>
                   <div className="tutorial-diagram-row">Top blocked: [Tile] + [Tile]</div>
                 </div>
               </div>
@@ -121,7 +127,7 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
               </div>
 
               <div className="tutorial-section">
-                <div className="tutorial-heading">Tools and Strategy</div>
+                <div className="tutorial-heading">Tools</div>
                 <ul className="tutorial-list">
                   <li>
                     <strong>Undo</strong> restores your last removed tile and is limited by
@@ -132,13 +138,18 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
                     by settings.
                   </li>
                   <li>
-                    <strong>Tray</strong> shows your last few moves, so avoid filling it to keep
-                    options open.
+                    <strong>Undo Stack</strong> shows your recent moves. If it fills up, you must
+                    undo or restart.
                   </li>
-                  <li>
-                    Strategy tip: start with tiles that open access to more tiles or reveal rarer
-                    numbers.
-                  </li>
+                </ul>
+              </div>
+
+              <div className="tutorial-section">
+                <div className="tutorial-heading">Strategy</div>
+                <ul className="tutorial-list">
+                  <li>Prefer removals that open access to more tiles.</li>
+                  <li>Use Undo to escape bad reveals.</li>
+                  <li>Use Hint if stuck.</li>
                 </ul>
               </div>
             </div>
@@ -158,3 +169,4 @@ export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
     </div>
   );
 }
+
