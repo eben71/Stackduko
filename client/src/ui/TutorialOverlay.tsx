@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import type { GameState } from "@/store/gameStore";
+import { HelpCircle, X } from "lucide-react";
 
 type TutorialOverlayProps = {
   state: GameState;
@@ -58,75 +59,99 @@ function getStepCopy(step: number): StepCopy {
 }
 
 export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
+  const [showFullDetails, setShowFullDetails] = useState(false);
   const step = state.tutorialStep;
   const canFinish = step >= 5 && state.tutorialMovesDone >= state.tutorialMovesRequired;
   const { message, reason } = getStepCopy(step);
 
   return (
     <div className="tutorial-overlay">
-      <div className="tutorial-card">
-        <div className="tutorial-title">Tutorial</div>
-
-        <div className="tutorial-section">
-          <div className="tutorial-heading">How to Play</div>
-          <div className="tutorial-objective">
-            Reveal every tile by removing free tiles. Each removed tile reveals its number on the
-            Sudoku grid. At the end, the grid must form a valid Sudoku.
-          </div>
-        </div>
-
-        <div className="tutorial-section">
-          <div className="tutorial-heading">Free tile rule</div>
-          <ul className="tutorial-list">
-            <li>No tile sits on top.</li>
-            <li>At least one horizontal side is open.</li>
-          </ul>
-          <div className="tutorial-diagram" aria-hidden="true">
-            <div className="tutorial-diagram-row">Open side → [Tile] ← Blocked side</div>
-            <div className="tutorial-diagram-row">Top blocked: [Tile] + [Tile]</div>
-          </div>
-        </div>
-
-        <div className="tutorial-section">
-          <div className="tutorial-heading">Sudoku rules</div>
-          <div className="tutorial-body">
-            Duplicates are not allowed in any row, column, or 3x3 box. When a move is illegal, the
-            grid highlights the conflicting cells so you can see where the duplicate appears.
-          </div>
-        </div>
-
-        <div className="tutorial-section">
-          <div className="tutorial-heading">Tools and Strategy</div>
-          <ul className="tutorial-list">
-            <li>
-              <strong>Undo</strong> restores your last removed tile and is limited by settings.
-            </li>
-            <li>
-              <strong>Hint</strong> highlights a safe tile when you are stuck and is limited by
-              settings.
-            </li>
-            <li>
-              <strong>Tray</strong> shows your last few moves, so avoid filling it to keep options
-              open.
-            </li>
-            <li>
-              Strategy tip: start with tiles that open access to more tiles or reveal rarer numbers.
-            </li>
-          </ul>
-        </div>
-
-        <div className="tutorial-section">
-          <div className="tutorial-heading">Instruction</div>
-          <div className="tutorial-message">{message}</div>
-          <div className="tutorial-tip">{reason}</div>
-        </div>
-
+      <div className="tutorial-compact">
+        <button 
+          className="help-button" 
+          onClick={() => setShowFullDetails(true)}
+          title="How to play"
+        >
+          <HelpCircle size={24} />
+        </button>
+        <div className="tutorial-message-brief">{message}</div>
         {canFinish && (
-          <button className="menu-primary tutorial-finish" onClick={onFinish}>
-            Finish Tutorial
+          <button className="menu-primary tutorial-finish-compact" onClick={onFinish}>
+            Finish
           </button>
         )}
       </div>
+
+      {showFullDetails && (
+        <div className="tutorial-full-overlay" onClick={() => setShowFullDetails(false)}>
+          <div className="tutorial-card" onClick={(e) => e.stopPropagation()}>
+            <button className="tutorial-close" onClick={() => setShowFullDetails(false)}>
+              <X size={24} />
+            </button>
+            <div className="tutorial-title">Tutorial</div>
+
+            <div className="tutorial-scroll-area">
+              <div className="tutorial-section">
+                <div className="tutorial-heading">How to Play</div>
+                <div className="tutorial-objective">
+                  Reveal every tile by removing free tiles. Each removed tile reveals its number on the
+                  Sudoku grid. At the end, the grid must form a valid Sudoku.
+                </div>
+              </div>
+
+              <div className="tutorial-section">
+                <div className="tutorial-heading">Free tile rule</div>
+                <ul className="tutorial-list">
+                  <li>No tile sits on top.</li>
+                  <li>At least one horizontal side is open.</li>
+                </ul>
+                <div className="tutorial-diagram" aria-hidden="true">
+                  <div className="tutorial-diagram-row">Open side → [Tile] ← Blocked side</div>
+                  <div className="tutorial-diagram-row">Top blocked: [Tile] + [Tile]</div>
+                </div>
+              </div>
+
+              <div className="tutorial-section">
+                <div className="tutorial-heading">Sudoku rules</div>
+                <div className="tutorial-body">
+                  Duplicates are not allowed in any row, column, or 3x3 box. When a move is illegal, the
+                  grid highlights the conflicting cells so you can see where the duplicate appears.
+                </div>
+              </div>
+
+              <div className="tutorial-section">
+                <div className="tutorial-heading">Tools and Strategy</div>
+                <ul className="tutorial-list">
+                  <li>
+                    <strong>Undo</strong> restores your last removed tile and is limited by settings.
+                  </li>
+                  <li>
+                    <strong>Hint</strong> highlights a safe tile when you are stuck and is limited by
+                    settings.
+                  </li>
+                  <li>
+                    <strong>Tray</strong> shows your last few moves, so avoid filling it to keep options
+                    open.
+                  </li>
+                  <li>
+                    Strategy tip: start with tiles that open access to more tiles or reveal rarer numbers.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="tutorial-section tutorial-instruction-highlight">
+              <div className="tutorial-heading">Current Task</div>
+              <div className="tutorial-message">{message}</div>
+              <div className="tutorial-tip">{reason}</div>
+            </div>
+
+            <button className="menu-primary w-full mt-4" onClick={() => setShowFullDetails(false)}>
+              Back to Game
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
