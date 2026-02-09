@@ -303,7 +303,9 @@
 
 .tutorial-card {
   text-align: left;
-  max-width: 320px;
+  max-width: 380px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
 }
 
 .tutorial-title {
@@ -316,27 +318,67 @@
   border: 1px solid var(--overlay-border);
   border-radius: 12px;
   padding: 10px 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: #0f172a;
   font-size: 0.9rem;
 }
 
-.tutorial-label {
+.tutorial-section {
+  margin-bottom: 14px;
+}
+
+.tutorial-heading {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--overlay-muted);
-  margin-top: 10px;
+  margin-bottom: 6px;
 }
 
 .tutorial-message {
   color: var(--overlay-muted);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .tutorial-tip {
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+}
+
+.tutorial-body {
+  color: var(--overlay-muted);
+}
+
+.tutorial-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--overlay-muted);
+  display: grid;
+  gap: 6px;
+}
+
+.tutorial-list strong {
+  color: #0f172a;
+}
+
+.tutorial-diagram {
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px dashed var(--overlay-border);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #1f2937;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.tutorial-diagram-row {
+  display: flex;
+  justify-content: center;
+}
+
+.tutorial-finish {
+  width: 100%;
+  margin-top: 8px;
 }
 
 .overlay-toast {
@@ -366,5 +408,10 @@
     left: 16px;
     right: 16px;
     bottom: 140px;
+  }
+
+  .tutorial-card {
+    max-width: none;
+    max-height: calc(100vh - 200px);
   }
 }

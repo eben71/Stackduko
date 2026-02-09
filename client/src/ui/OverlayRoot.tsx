@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { SettingsOverlay } from "@/ui/SettingsOverlay";
 import { useGameStore } from "@/store/gameStore";
+import { TutorialOverlay } from "@/ui/TutorialOverlay";
 import { useSettingsStore } from "@/store/settingsStore";
 import { getProgress } from "@/game/state/storage";
 
@@ -472,59 +473,6 @@ function StuckModal({
             Quit
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function TutorialOverlay({ state, onFinish }: { state: GameSnapshot; onFinish: () => void }) {
-  const step = state.tutorialStep;
-  const canFinish = step >= 5 && state.tutorialMovesDone >= state.tutorialMovesRequired;
-
-  let message = "Tap a glowing free tile to remove it.";
-  let reason = "Free tiles have at least one open side and can be removed.";
-
-  if (step === 1) {
-    message = "Tap a blocked tile.";
-    reason = "Blocked tiles are locked because they have tiles on both sides.";
-  }
-
-  if (step === 2) {
-    message = "Try the highlighted tile to see an illegal move.";
-    reason = "Revealed numbers must follow Sudoku rules: no duplicates in row, column, or box.";
-  }
-
-  if (step === 3) {
-    message = "Use Undo to restore the last tile.";
-    reason = "Undo lets you recover from a bad move. It may be limited by settings.";
-  }
-
-  if (step === 4) {
-    message = "Use Hint to highlight a safe move.";
-    reason = "Hints point to a legal reveal when you are stuck.";
-  }
-
-  if (step >= 5) {
-    message = "Make a few more moves, then finish the tutorial.";
-    reason = "Keep the tray from filling up, and watch for legal placements as numbers appear.";
-  }
-
-  return (
-    <div className="tutorial-overlay">
-      <div className="tutorial-card">
-        <div className="tutorial-title">Tutorial</div>
-        <div className="tutorial-objective">
-          Objective: clear all tiles by revealing numbers that obey Sudoku rules.
-        </div>
-        <div className="tutorial-label">What to do</div>
-        <div className="tutorial-message">{message}</div>
-        <div className="tutorial-label">Why it matters</div>
-        <div className="tutorial-tip">{reason}</div>
-        {canFinish && (
-          <button className="menu-primary" onClick={onFinish}>
-            Finish Tutorial
-          </button>
-        )}
       </div>
     </div>
   );
