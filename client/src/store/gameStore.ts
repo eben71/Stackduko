@@ -382,7 +382,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         tutorialStep = 3;
       } else if (
         tutorialStep === 6 &&
-        tutorialHintUsed &&
+        (tutorialHintUsed || state.hintsRemaining <= 0) &&
         (state.hintTile === null || state.hintTile === index)
       ) {
         tutorialStep = 7;
