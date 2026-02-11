@@ -374,8 +374,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     let tutorialStep = state.tutorialStep;
     let tutorialMovesDone = state.tutorialMovesDone;
     let tutorialHintUsed = state.tutorialHintUsed;
-    let tutorialLastReveal = { row: tile.row, col: tile.col, value: tile.value };
-    let trayOverflowNotified = state.trayOverflowNotified;
+    const tutorialLastReveal = { row: tile.row, col: tile.col, value: tile.value };
+    const trayOverflowNotified = state.trayOverflowNotified;
 
     if (state.phase === "tutorial") {
       if (tutorialStep === 2) {
