@@ -313,8 +313,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (state.phase === "tutorial" && state.tutorialStep === 6) {
       if (!state.tutorialHintUsed) {
-        set({ lastMessage: "Press Hint to highlight a safe tile first." });
-        return { ok: false, reason: "tutorial-locked" };
+        if (state.hintsRemaining <= 0) {
+          set({
+            tutorialHintUsed: true,
+            lastMessage: "Hints are unavailable in this run. Remove any legal free tile.",
+          });
+        } else {
+          set({ lastMessage: "Press Hint to highlight a safe tile first." });
+          return { ok: false, reason: "tutorial-locked" };
+        }
       }
       if (state.hintTile !== null && index !== state.hintTile) {
         set({ lastMessage: "Remove the highlighted tile to complete the hint step." });
@@ -373,10 +380,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (state.phase === "tutorial") {
       if (tutorialStep === 2) {
         tutorialStep = 3;
-      } else if (tutorialStep === 6 && tutorialHintUsed && state.hintTile === index) {
+      } else if (
+        tutorialStep === 6 &&
+        tutorialHintUsed &&
+        (state.hintTile === null || state.hintTile === index)
+      ) {
         tutorialStep = 7;
         tutorialHintUsed = false;
-        lastMessage = "Nice! The hint showed a legal reveal.";
+        lastMessage =
+          state.hintTile === null
+            ? "Great. You completed the hint step without available hints."
+            : "Nice! The hint showed a legal reveal.";
       } else if (tutorialStep >= 8) {
         tutorialMovesDone += 1;
       }
