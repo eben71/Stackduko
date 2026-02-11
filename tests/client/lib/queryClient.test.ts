@@ -35,11 +35,38 @@ describe("apiRequest", () => {
     expect(res.ok).toBe(true);
   });
 
+  it("sends json headers/body when data is provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new MockResponse("", 200, true));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest("POST", "/api/scores", { value: 9 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/scores",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: 9 }),
+      }),
+    );
+  });
+
   it("throws with status and text when not ok", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new MockResponse("Bad", 400, false, "Bad Request"));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(apiRequest("GET", "/api/scores")).rejects.toThrow("400: Bad");
+  });
+
+  it("falls back to status text when response text is empty", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new MockResponse("", 403, false, "Forbidden from status text"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest("GET", "/api/scores")).rejects.toThrow(
+      "403: Forbidden from status text",
+    );
   });
 });
 

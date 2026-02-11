@@ -4,6 +4,8 @@ import { useGameStore } from "@/store/gameStore";
 import { TutorialOverlay } from "@/ui/TutorialOverlay";
 import { useSettingsStore } from "@/store/settingsStore";
 import { getProgress } from "@/game/state/storage";
+import { HelpOverlay } from "@/ui/HelpOverlay";
+import { HelpCircle } from "lucide-react";
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   easy: "Easy",
@@ -21,6 +23,7 @@ export function OverlayRoot() {
     startGame,
     startTutorial,
     finishTutorial,
+    advanceTutorial,
     pauseGame,
     resumeGame,
     restartLevel,
@@ -34,6 +37,7 @@ export function OverlayRoot() {
   const gameState = useGameStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsOrigin, setSettingsOrigin] = useState<SettingsOrigin>("menu");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState(settings.defaultDifficulty);
   const [progressTick, setProgressTick] = useState(0);
   const [progress, setProgress] = useState(() => getProgress());
@@ -78,6 +82,10 @@ export function OverlayRoot() {
     }
   };
 
+  const openHelp = () => {
+    setHelpOpen(true);
+  };
+
   const handleContinue = () => {
     const difficulty = progress.lastDifficultyPlayed;
     const level = progress.highestLevelUnlocked[difficulty];
@@ -97,6 +105,7 @@ export function OverlayRoot() {
           onContinue={handleContinue}
           onPlay={() => useGameStore.getState().setPhase("difficulty")}
           onTutorial={() => startTutorial()}
+          onHelp={openHelp}
           onOptions={() => openSettings("menu")}
           onQuit={() => {
             window.open("", "_self");
@@ -137,12 +146,14 @@ export function OverlayRoot() {
             undoMove();
           }}
           onRestart={restartLevel}
+          onHelp={openHelp}
         />
       )}
 
       {phase === "paused" && (
         <PauseMenu
           onResume={resumeGame}
+          onHelp={openHelp}
           onOptions={() => openSettings("pause")}
           onRestart={restartLevel}
           onQuit={quitToMenu}
@@ -170,7 +181,9 @@ export function OverlayRoot() {
         />
       )}
 
-      {phase === "tutorial" && <TutorialOverlay state={gameState} onFinish={finishTutorial} />}
+      {phase === "tutorial" && (
+        <TutorialOverlay state={gameState} onFinish={finishTutorial} onAdvance={advanceTutorial} />
+      )}
 
       {gameState.lastMessage && settings.tutorialTips && (
         <div className="overlay-toast" role="status">
@@ -183,6 +196,8 @@ export function OverlayRoot() {
         onClose={closeSettings}
         onProgressReset={() => setProgressTick((value) => value + 1)}
       />
+
+      <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
@@ -206,6 +221,7 @@ function MainMenu({
   onContinue,
   onPlay,
   onTutorial,
+  onHelp,
   onOptions,
   onQuit,
 }: {
@@ -213,6 +229,7 @@ function MainMenu({
   onContinue: () => void;
   onPlay: () => void;
   onTutorial: () => void;
+  onHelp: () => void;
   onOptions: () => void;
   onQuit: () => void;
 }) {
@@ -232,6 +249,9 @@ function MainMenu({
           </button>
           <button className="menu-secondary" onClick={onTutorial}>
             Tutorial
+          </button>
+          <button className="menu-secondary" onClick={onHelp}>
+            How to Play
           </button>
           <button className="menu-secondary" onClick={onOptions}>
             Options
@@ -300,12 +320,14 @@ function Hud({
   onHint,
   onUndo,
   onRestart,
+  onHelp,
 }: {
   state: GameSnapshot;
   onPause: () => void;
   onHint: () => void;
   onUndo: () => void;
   onRestart: () => void;
+  onHelp: () => void;
 }) {
   const undoDisabled =
     state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
@@ -342,9 +364,9 @@ function Hud({
 
       <div className="hud-bottom">
         <div className="tray">
-          <div className="tray-label">Undo Stack</div>
+          <div className="tray-label">Undo History</div>
           <div className="tray-items">
-            {state.tray.length === 0 && <div className="tray-empty">No tiles removed yet.</div>}
+            {state.tray.length === 0 && <div className="tray-empty">No reveals yet.</div>}
             {state.tray.map((index, idx) => (
               <div key={`${index}-${idx}`} className="tray-tile">
                 {state.tiles[index]?.value ?? ""}
@@ -357,10 +379,13 @@ function Hud({
             Undo
           </button>
           <button className="hud-action" onClick={onHint} disabled={hintDisabled}>
-            Hint
+            Hint (safe reveal)
           </button>
           <button className="hud-action" onClick={onRestart}>
             Restart
+          </button>
+          <button className="hud-help" onClick={onHelp} aria-label="How to play">
+            <HelpCircle size={20} />
           </button>
         </div>
       </div>
@@ -370,11 +395,13 @@ function Hud({
 
 function PauseMenu({
   onResume,
+  onHelp,
   onOptions,
   onRestart,
   onQuit,
 }: {
   onResume: () => void;
+  onHelp: () => void;
   onOptions: () => void;
   onRestart: () => void;
   onQuit: () => void;
@@ -386,6 +413,9 @@ function PauseMenu({
         <div className="modal-actions">
           <button className="menu-primary" onClick={onResume}>
             Resume
+          </button>
+          <button className="menu-secondary" onClick={onHelp}>
+            How to Play
           </button>
           <button className="menu-secondary" onClick={onOptions}>
             Options
@@ -458,13 +488,13 @@ function StuckModal({
   return (
     <div className="overlay-modal">
       <div className="modal-card">
-        <div className="modal-title">No legal moves</div>
+        <div className="modal-title">No legal reveals</div>
         <div className="modal-actions">
           <button className="menu-secondary" onClick={onUndo} disabled={undoDisabled}>
             Undo
           </button>
           <button className="menu-secondary" onClick={onHint} disabled={hintDisabled}>
-            Hint
+            Hint (safe reveal)
           </button>
           <button className="menu-secondary" onClick={onRestart}>
             Restart

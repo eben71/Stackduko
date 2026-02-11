@@ -46,6 +46,11 @@ The game uses a clear separation: React renders the HTML overlay (menus, HUD, sc
 - Custom build script at `/script/build.ts` that bundles both client and server
 - Output: client assets to `dist/public`, server to `dist/index.cjs`
 
+### Local Setup Notes
+
+- Install dependencies with `npm install --include=dev` before running `make check`, `make lint`, `make test`, or `make build`.
+- If `npm install` reports `403` responses from the npm registry, dependencies may be partially installed and TypeScript will fail to find `@types/node` or `vite/client`. Ensure registry access is available or configure an internal mirror, then rerun the install.
+
 ### Project Structure
 
 ```

@@ -27,7 +27,7 @@ export type GamePhase =
 
 export type AttemptResult = {
   ok: boolean;
-  reason?: "blocked" | "illegal" | "tray-full" | "not-playing" | "not-free";
+  reason?: "blocked" | "illegal" | "tray-full" | "not-playing" | "not-free" | "tutorial-locked";
   conflicts?: { row: number; col: number }[];
 };
 
@@ -62,10 +62,14 @@ export type GameState = {
   tutorialTargets: TutorialTargets;
   tutorialMovesRequired: number;
   tutorialMovesDone: number;
+  tutorialHintUsed: boolean;
+  tutorialLastReveal: { row: number; col: number; value: number } | null;
+  trayOverflowNotified: boolean;
   pausedFrom: GamePhase | null;
   startGame: (difficulty?: Difficulty, levelNumber?: number, seed?: number) => LevelData;
   startTutorial: () => void;
   finishTutorial: () => void;
+  advanceTutorial: () => void;
   setPhase: (phase: GamePhase) => void;
   pauseGame: () => void;
   resumeGame: () => void;
@@ -80,7 +84,7 @@ export type GameState = {
 };
 
 const TRAY_LIMIT = 7;
-const TUTORIAL_MOVES_REQUIRED = 3;
+const TUTORIAL_MOVES_REQUIRED = 5;
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: "boot",
@@ -108,6 +112,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   tutorialTargets: { blockedIndex: null, illegalIndex: null },
   tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
   tutorialMovesDone: 0,
+  tutorialHintUsed: false,
+  tutorialLastReveal: null,
+  trayOverflowNotified: false,
   pausedFrom: null,
 
   startGame: (difficultyOverride, levelNumberOverride, seedOverride) => {
@@ -153,6 +160,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       tutorialTargets: { blockedIndex: null, illegalIndex: null },
       tutorialMovesDone: 0,
       tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
+      tutorialHintUsed: false,
+      tutorialLastReveal: null,
+      trayOverflowNotified: false,
       pausedFrom: null,
     });
 
@@ -198,6 +208,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
       tutorialMovesDone: 0,
       tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
+      tutorialHintUsed: false,
+      tutorialLastReveal: null,
+      trayOverflowNotified: false,
       pausedFrom: null,
     });
   },
@@ -206,6 +219,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     updateProgress({ tutorialCompleted: true });
     set({ phase: "menu", tutorialStep: 0 });
   },
+
+  advanceTutorial: () =>
+    set((state) => {
+      if (state.phase !== "tutorial") return {};
+      if (state.tutorialStep === 0) {
+        return { tutorialStep: 1, lastMessage: null };
+      }
+      if (state.tutorialStep === 1) {
+        return { tutorialStep: 2, lastMessage: null };
+      }
+      if (state.tutorialStep === 7) {
+        return {
+          tutorialStep: 8,
+          tutorialMovesDone: 0,
+          tutorialHintUsed: false,
+          hintTile: null,
+          lastMessage: null,
+        };
+      }
+      return {};
+    }),
 
   setPhase: (phase) => set({ phase }),
 
@@ -244,41 +278,73 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { ok: false, reason: "not-free" };
     }
 
-    if (state.tray.length >= state.trayLimit) {
-      set({ lastMessage: "Undo stack full. Undo or restart." });
-      return { ok: false, reason: "tray-full" };
-    }
-
     if (!state.solverContext) {
       return { ok: false, reason: "not-playing" };
     }
 
-    if (state.phase === "tutorial" && state.tutorialStep === 1) {
+    if (state.phase === "tutorial" && state.tutorialStep < 2) {
+      set({ lastMessage: "Read the tutorial panel, then press Next." });
+      return { ok: false, reason: "tutorial-locked" };
+    }
+
+    if (state.phase === "tutorial" && state.tutorialStep === 7) {
+      set({ lastMessage: "Review Undo History, then press Next to continue." });
+      return { ok: false, reason: "tutorial-locked" };
+    }
+
+    if (state.phase === "tutorial" && state.tutorialStep === 3) {
       if (index === state.tutorialTargets.blockedIndex) {
         set({
-          tutorialStep: 2,
+          tutorialStep: 4,
           hintTile: state.tutorialTargets.illegalIndex,
-          lastMessage: "That tile is blocked. One side must be open.",
+          lastMessage:
+            "Blocked tile: it has a tile on top or both sides are blocked. Look for an open side.",
         });
+        return { ok: false, reason: "blocked" };
       }
+      set({ lastMessage: "Tap the blocked tile highlighted in the stack." });
+      return { ok: false, reason: "tutorial-locked" };
     }
 
     if (!isTileFree(state.solverContext, state, index)) {
-      set({ lastMessage: "Tile is blocked." });
+      set({ lastMessage: "Blocked tile: one side must be open and nothing can sit on top." });
       return { ok: false, reason: "blocked" };
     }
 
-    if (state.phase === "tutorial" && state.tutorialStep === 2) {
+    if (state.phase === "tutorial" && state.tutorialStep === 6) {
+      if (!state.tutorialHintUsed) {
+        if (state.hintsRemaining <= 0) {
+          set({
+            tutorialHintUsed: true,
+            lastMessage: "Hints are unavailable in this run. Remove any legal free tile.",
+          });
+        } else {
+          set({ lastMessage: "Press Hint to highlight a safe tile first." });
+          return { ok: false, reason: "tutorial-locked" };
+        }
+      }
+      if (state.hintTile !== null && index !== state.hintTile) {
+        set({ lastMessage: "Remove the highlighted tile to complete the hint step." });
+        return { ok: false, reason: "tutorial-locked" };
+      }
+    }
+
+    if (state.phase === "tutorial" && state.tutorialStep === 4) {
       if (index === state.tutorialTargets.illegalIndex) {
-        const demoConflicts = [{ row: state.tiles[index].row, col: state.tiles[index].col }];
+        const demoConflicts = [
+          { row: state.tiles[index].row, col: state.tiles[index].col },
+          { row: state.tiles[index].row, col: Math.max(0, state.tiles[index].col - 1) },
+        ];
         set({
-          tutorialStep: 3,
+          tutorialStep: 5,
           hintTile: null,
           lastConflicts: demoConflicts,
-          lastMessage: "Illegal move. That number conflicts with the row.",
+          lastMessage: `Illegal reveal: duplicates ${state.tiles[index].value} in this row.`,
         });
         return { ok: false, reason: "illegal", conflicts: demoConflicts };
       }
+      set({ lastMessage: "Tap the highlighted tile to see a Sudoku conflict." });
+      return { ok: false, reason: "tutorial-locked" };
     }
 
     const tile = state.tiles[index];
@@ -291,23 +357,41 @@ export const useGameStore = create<GameState>((set, get) => ({
       );
       set({
         lastConflicts: conflicts,
-        lastMessage: "Illegal move.",
+        lastMessage: describeConflict(state.revealed, tile.row, tile.col, tile.value),
       });
       return { ok: false, reason: "illegal", conflicts };
     }
 
     const next = applyMove(state.solverContext, state, index);
     const nextTray = [...state.tray, index];
+    const overflowed = nextTray.length > state.trayLimit;
+    if (overflowed) {
+      nextTray.shift();
+    }
     const nextMoves = state.moves + 1;
     let nextPhase: GamePhase = state.phase;
-    let lastMessage: string | null = null;
+    let lastMessage: string | null = `Revealed R${tile.row + 1} C${tile.col + 1} = ${tile.value}`;
     let tutorialStep = state.tutorialStep;
     let tutorialMovesDone = state.tutorialMovesDone;
+    let tutorialHintUsed = state.tutorialHintUsed;
+    const tutorialLastReveal = { row: tile.row, col: tile.col, value: tile.value };
+    const trayOverflowNotified = state.trayOverflowNotified;
 
     if (state.phase === "tutorial") {
-      if (tutorialStep === 0) {
-        tutorialStep = 1;
-      } else if (tutorialStep >= 5) {
+      if (tutorialStep === 2) {
+        tutorialStep = 3;
+      } else if (
+        tutorialStep === 6 &&
+        (tutorialHintUsed || state.hintsRemaining <= 0) &&
+        (state.hintTile === null || state.hintTile === index)
+      ) {
+        tutorialStep = 7;
+        tutorialHintUsed = false;
+        lastMessage =
+          state.hintTile === null
+            ? "Great. You completed the hint step without available hints."
+            : "Nice! The hint showed a legal reveal.";
+      } else if (tutorialStep >= 8) {
         tutorialMovesDone += 1;
       }
     }
@@ -316,7 +400,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       nextPhase = state.phase === "tutorial" ? "tutorial" : "win";
     } else if (getLegalMoves(state.solverContext, next).length === 0) {
       nextPhase = state.phase === "tutorial" ? "tutorial" : "stuck";
-      lastMessage = "No legal moves.";
+      lastMessage = "No legal reveals. Use hint or undo.";
     }
 
     set({
@@ -330,7 +414,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       phase: nextPhase,
       tutorialStep,
       tutorialMovesDone,
+      tutorialHintUsed,
+      tutorialLastReveal,
+      trayOverflowNotified: overflowed && !trayOverflowNotified ? true : state.trayOverflowNotified,
     });
+
+    if (overflowed && !trayOverflowNotified) {
+      set({
+        lastMessage: `Undo history full. Older moves are locked in (undo affects the last ${state.trayLimit} reveals).`,
+      });
+    }
 
     if (nextPhase === "win") {
       finalizeWin(get());
@@ -344,6 +437,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!state.solverContext) return false;
     if (state.tray.length === 0) return false;
     if (state.undoRemaining !== null && state.undoRemaining <= 0) return false;
+    if (state.phase === "tutorial" && state.tutorialStep < 5) {
+      set({ lastMessage: "Undo comes later in the tutorial." });
+      return false;
+    }
 
     const index = state.tray[state.tray.length - 1];
     const tile = state.tiles[index];
@@ -357,8 +454,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       state.undoRemaining === null ? null : Math.max(0, state.undoRemaining - 1);
 
     let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 3) {
-      tutorialStep = 4;
+    if (state.phase === "tutorial" && tutorialStep === 5) {
+      tutorialStep = 6;
     }
 
     set({
@@ -369,9 +466,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       undoRemaining: nextUndoRemaining,
       phase: state.phase === "paused" ? "paused" : state.phase,
       hintTile: null,
-      lastMessage: null,
+      lastMessage: "Undo restored the tile and hid the grid cell.",
       lastConflicts: [],
       tutorialStep,
+      tutorialHintUsed: false,
     });
 
     return true;
@@ -381,12 +479,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     if (!state.solverContext) return null;
     if (state.hintsRemaining <= 0) return null;
+    if (state.phase === "tutorial" && state.tutorialStep < 6) {
+      set({ lastMessage: "Hints come later in the tutorial." });
+      return null;
+    }
     const hintIndex = getHintMove(state.solverContext, state);
     if (hintIndex === null) return null;
 
     let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 4) {
-      tutorialStep = 5;
+    if (state.phase === "tutorial" && tutorialStep === 6) {
+      tutorialStep = 6;
     }
 
     set({
@@ -394,6 +496,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       hintsRemaining: state.hintsRemaining - 1,
       hintsUsed: state.hintsUsed + 1,
       tutorialStep,
+      tutorialHintUsed:
+        state.phase === "tutorial" && state.tutorialStep === 6 ? true : state.tutorialHintUsed,
+      lastMessage: state.phase === "tutorial" ? "Hint active: remove the highlighted tile." : null,
     });
 
     return hintIndex;
@@ -431,4 +536,44 @@ function finalizeWin(state: GameState) {
       ),
     },
   });
+}
+
+function describeConflict(
+  revealed: SolverState["revealed"],
+  row: number,
+  col: number,
+  value: number,
+) {
+  if (revealed[row][col] !== null) {
+    return "Illegal reveal: that cell is already revealed.";
+  }
+  const rowConflict = revealed[row].some((cell, index) => index !== col && cell === value);
+  const colConflict = revealed.some((cells, index) => index !== row && cells[col] === value);
+  const boxRow = Math.floor(row / 3) * 3;
+  const boxCol = Math.floor(col / 3) * 3;
+  let boxConflict = false;
+  for (let r = boxRow; r < boxRow + 3; r += 1) {
+    for (let c = boxCol; c < boxCol + 3; c += 1) {
+      if (r === row && c === col) continue;
+      if (revealed[r][c] === value) {
+        boxConflict = true;
+        break;
+      }
+    }
+    if (boxConflict) break;
+  }
+  const parts = [];
+  if (rowConflict) parts.push("row");
+  if (colConflict) parts.push("column");
+  if (boxConflict) parts.push("box");
+  if (parts.length === 0) {
+    return "Illegal reveal.";
+  }
+  if (parts.length === 1) {
+    return `Illegal reveal: duplicates ${value} in this ${parts[0]}.`;
+  }
+  if (parts.length === 2) {
+    return `Illegal reveal: duplicates ${value} in this ${parts[0]} and ${parts[1]}.`;
+  }
+  return `Illegal reveal: duplicates ${value} in this row, column, and box.`;
 }

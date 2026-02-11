@@ -83,6 +83,76 @@ describe("gameStore branches", () => {
     expect(result.conflicts?.length).toBeGreaterThan(0);
   });
 
+  it("reports row-only conflict text", () => {
+    const tiles = [{ id: "t0", x: 0, y: 0, z: 0, row: 0, col: 8, value: 1 }];
+    const context = createSolverContext(tiles);
+    const session = createInitialState(tiles);
+    session.revealed[0][0] = 1;
+
+    useGameStore.setState({
+      phase: "playing",
+      tiles,
+      present: session.present,
+      revealed: session.revealed,
+      solverContext: context,
+      tray: [],
+      trayLimit: 7,
+    });
+
+    const result = useGameStore.getState().attemptRemoveTile(0);
+    expect(result.ok).toBe(false);
+    expect(useGameStore.getState().lastMessage).toBe("Illegal reveal: duplicates 1 in this row.");
+  });
+
+  it("reports row and column conflict text", () => {
+    const tiles = [{ id: "t0", x: 0, y: 0, z: 0, row: 0, col: 8, value: 1 }];
+    const context = createSolverContext(tiles);
+    const session = createInitialState(tiles);
+    session.revealed[0][0] = 1;
+    session.revealed[4][8] = 1;
+
+    useGameStore.setState({
+      phase: "playing",
+      tiles,
+      present: session.present,
+      revealed: session.revealed,
+      solverContext: context,
+      tray: [],
+      trayLimit: 7,
+    });
+
+    const result = useGameStore.getState().attemptRemoveTile(0);
+    expect(result.ok).toBe(false);
+    expect(useGameStore.getState().lastMessage).toBe(
+      "Illegal reveal: duplicates 1 in this row and column.",
+    );
+  });
+
+  it("reports row, column, and box conflict text", () => {
+    const tiles = [{ id: "t0", x: 0, y: 0, z: 0, row: 1, col: 1, value: 1 }];
+    const context = createSolverContext(tiles);
+    const session = createInitialState(tiles);
+    session.revealed[1][3] = 1;
+    session.revealed[4][1] = 1;
+    session.revealed[0][0] = 1;
+
+    useGameStore.setState({
+      phase: "playing",
+      tiles,
+      present: session.present,
+      revealed: session.revealed,
+      solverContext: context,
+      tray: [],
+      trayLimit: 7,
+    });
+
+    const result = useGameStore.getState().attemptRemoveTile(0);
+    expect(result.ok).toBe(false);
+    expect(useGameStore.getState().lastMessage).toBe(
+      "Illegal reveal: duplicates 1 in this row, column, and box.",
+    );
+  });
+
   it("marks win and updates progress on final tile", () => {
     resetProgress();
     const tiles = [{ id: "t0", x: 0, y: 0, z: 0, row: 0, col: 0, value: 1 }];

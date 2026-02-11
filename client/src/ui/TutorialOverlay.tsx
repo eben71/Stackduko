@@ -1,172 +1,148 @@
-import React, { useState } from "react";
+import React from "react";
 import type { GameState } from "@/store/gameStore";
-import { HelpCircle, X } from "lucide-react";
 
 type TutorialOverlayProps = {
   state: GameState;
   onFinish: () => void;
+  onAdvance: () => void;
 };
 
-type StepCopy = {
-  message: string;
-  reason: string;
+type StepContent = {
+  title: string;
+  body: string;
+  bullets?: string[];
+  action?: string;
 };
 
-function getStepCopy(step: number): StepCopy {
-  if (step === 1) {
-    return {
-      message: "Tap a blocked tile to see why it cannot be removed.",
-      reason: "Blocked tiles have a tile on top or are trapped on both sides, so they are locked.",
-    };
+function getStepContent(state: GameState): StepContent {
+  const { tutorialLastReveal, tutorialMovesDone, tutorialMovesRequired } = state;
+  switch (state.tutorialStep) {
+    case 0:
+      return {
+        title: "Big picture",
+        body: "You do NOT place numbers. You reveal them.",
+        bullets: [
+          "Each 3D tile is linked to one Sudoku cell.",
+          "Removing a tile auto-fills its number into the grid.",
+          "The grid shows revealed progress, not placement choices.",
+          "Goal: clear all tiles and keep the revealed Sudoku valid.",
+        ],
+        action: "Press Next to begin.",
+      };
+    case 1:
+      return {
+        title: "Free tiles",
+        body: "Free tiles glow. A tile is free when nothing is on top and at least one side is open.",
+        bullets: [
+          "Tap a glowing tile when you're ready.",
+          "You reveal the bound cell automatically.",
+        ],
+        action: "Press Next to practice a reveal.",
+      };
+    case 2:
+      return {
+        title: "Reveal a free tile",
+        body: "Remove any glowing tile.",
+        bullets: ["Watch the grid auto-fill after the tile disappears."],
+      };
+    case 3: {
+      const revealText = tutorialLastReveal
+        ? `This tile revealed R${tutorialLastReveal.row + 1} C${
+            tutorialLastReveal.col + 1
+          } = ${tutorialLastReveal.value}.`
+        : "Nice reveal!";
+      return {
+        title: "Blocked tiles",
+        body: revealText,
+        bullets: ["Tap the blocked tile to see why it cannot be removed."],
+      };
+    }
+    case 4:
+      return {
+        title: "Sudoku conflicts",
+        body: "Revealed numbers must follow Sudoku rules.",
+        bullets: ["Tap the highlighted tile to see a conflict.", "Conflicts show a red outline."],
+      };
+    case 5:
+      return {
+        title: "Undo",
+        body: "Undo reverses your last reveal and hides the grid cell again.",
+        bullets: ["Press Undo once."],
+      };
+    case 6:
+      return {
+        title: "Hint",
+        body: "Hints point to a legal, free tile.",
+        bullets: ["Press Hint, then remove the highlighted tile."],
+      };
+    case 7:
+      return {
+        title: "Undo History",
+        body: "The tray is your Undo History, not storage.",
+        bullets: [
+          "Undo only affects your most recent reveals.",
+          "When full, older moves are locked in (play continues).",
+        ],
+        action: "Press Next to enter free play.",
+      };
+    case 8: {
+      const remaining = Math.max(0, tutorialMovesRequired - tutorialMovesDone);
+      return {
+        title: "Free play",
+        body: `Make ${remaining} more reveal${remaining === 1 ? "" : "s"}, then finish.`,
+        bullets: ["Use Undo or Hint if you get stuck.", "Clear all tiles to win."],
+      };
+    }
+    default:
+      return {
+        title: "Tutorial",
+        body: "Follow the steps to learn the rules.",
+      };
   }
-
-  if (step === 2) {
-    return {
-      message: "Tap the highlighted tile that causes a Sudoku conflict.",
-      reason:
-        "Duplicates are not allowed in any row, column, or 3x3 box, so conflicts are rejected.",
-    };
-  }
-
-  if (step === 3) {
-    return {
-      message: "Use Undo to restore the last removed tile.",
-      reason:
-        "Undo helps recover from mistakes, but the number of uses can be limited by settings.",
-    };
-  }
-
-  if (step === 4) {
-    return {
-      message: "Use Hint to highlight a legal move.",
-      reason:
-        "Hints point to a safe tile when you feel stuck, but the count is limited by settings.",
-    };
-  }
-
-  if (step >= 5) {
-    return {
-      message: "Make three more moves, then finish the tutorial.",
-      reason:
-        "Keep the undo stack from filling, watch Sudoku legality, and press Finish Tutorial when ready.",
-    };
-  }
-
-  return {
-    message: "Tap a glowing free tile to remove it.",
-    reason: "Free tiles are safe because at least one side is open and no tile sits on top.",
-  };
 }
 
-export function TutorialOverlay({ state, onFinish }: TutorialOverlayProps) {
-  const [showFullDetails, setShowFullDetails] = useState(false);
+export function TutorialOverlay({ state, onFinish, onAdvance }: TutorialOverlayProps) {
   const step = state.tutorialStep;
-  const canFinish = step >= 5 && state.tutorialMovesDone >= state.tutorialMovesRequired;
-  const { message, reason } = getStepCopy(step);
+  const canFinish = step >= 8 && state.tutorialMovesDone >= state.tutorialMovesRequired;
+  const content = getStepContent(state);
+  const showNext = step === 0 || step === 1 || step === 7;
 
   return (
     <div className="tutorial-overlay">
-      <div className="tutorial-compact">
-        <button
-          className="help-button"
-          onClick={() => setShowFullDetails(true)}
-          title="How to play"
-        >
-          <HelpCircle size={24} />
-        </button>
-        <div className="tutorial-message-brief">{message}</div>
-        {canFinish && (
-          <button className="menu-primary tutorial-finish-compact" onClick={onFinish}>
-            Finish
-          </button>
-        )}
-      </div>
-
-      {showFullDetails && (
-        <div className="tutorial-full-overlay" onClick={() => setShowFullDetails(false)}>
-          <div className="tutorial-card" onClick={(e) => e.stopPropagation()}>
-            <button className="tutorial-close" onClick={() => setShowFullDetails(false)}>
-              <X size={24} />
-            </button>
+      <div className="tutorial-card tutorial-guided" role="dialog" aria-live="polite">
+        <div className="tutorial-header">
+          <div>
             <div className="tutorial-title">Tutorial</div>
-
-            <div className="tutorial-scroll-area">
-              <div className="tutorial-section">
-                <div className="tutorial-heading">How to Play</div>
-                <div className="tutorial-objective">
-                  Reveal every tile by removing free tiles. Each removed tile reveals its number on
-                  the Sudoku grid. At the end, the grid must form a valid Sudoku.
-                </div>
-                <ul className="tutorial-list">
-                  <li>Each tile is bound to a Sudoku cell (row and column).</li>
-                  <li>Removing a tile reveals that number in its cell automatically.</li>
-                  <li>The grid is not a placement board; it shows revealed progress.</li>
-                  <li>The undo stack is a history of moves, not storage for later placement.</li>
-                </ul>
-              </div>
-
-              <div className="tutorial-section">
-                <div className="tutorial-heading">Free tile rule</div>
-                <ul className="tutorial-list">
-                  <li>No tile sits on top.</li>
-                  <li>At least one horizontal side is open.</li>
-                </ul>
-                <div className="tutorial-diagram" aria-hidden="true">
-                  <div className="tutorial-diagram-row">Open side -> [Tile] <- Blocked side</div>
-                  <div className="tutorial-diagram-row">Top blocked: [Tile] + [Tile]</div>
-                </div>
-              </div>
-
-              <div className="tutorial-section">
-                <div className="tutorial-heading">Sudoku rules</div>
-                <div className="tutorial-body">
-                  Duplicates are not allowed in any row, column, or 3x3 box. When a move is illegal,
-                  the grid highlights the conflicting cells so you can see where the duplicate
-                  appears.
-                </div>
-              </div>
-
-              <div className="tutorial-section">
-                <div className="tutorial-heading">Tools</div>
-                <ul className="tutorial-list">
-                  <li>
-                    <strong>Undo</strong> restores your last removed tile and is limited by
-                    settings.
-                  </li>
-                  <li>
-                    <strong>Hint</strong> highlights a safe tile when you are stuck and is limited
-                    by settings.
-                  </li>
-                  <li>
-                    <strong>Undo Stack</strong> shows your recent moves. If it fills up, you must
-                    undo or restart.
-                  </li>
-                </ul>
-              </div>
-
-              <div className="tutorial-section">
-                <div className="tutorial-heading">Strategy</div>
-                <ul className="tutorial-list">
-                  <li>Prefer removals that open access to more tiles.</li>
-                  <li>Use Undo to escape bad reveals.</li>
-                  <li>Use Hint if stuck.</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="tutorial-section tutorial-instruction-highlight">
-              <div className="tutorial-heading">Current Task</div>
-              <div className="tutorial-message">{message}</div>
-              <div className="tutorial-tip">{reason}</div>
-            </div>
-
-            <button className="menu-primary w-full mt-4" onClick={() => setShowFullDetails(false)}>
-              Back to Game
-            </button>
+            <div className="tutorial-step">{`Step ${Math.min(step + 1, 9)} of 9`}</div>
           </div>
         </div>
-      )}
+
+        <div className="tutorial-section">
+          <div className="tutorial-heading">{content.title}</div>
+          <div className="tutorial-body">{content.body}</div>
+          {content.bullets && (
+            <ul className="tutorial-list">
+              {content.bullets.map((bullet) => (
+                <li key={bullet}>{bullet}</li>
+              ))}
+            </ul>
+          )}
+          {content.action && <div className="tutorial-tip">{content.action}</div>}
+        </div>
+
+        <div className="tutorial-actions">
+          {showNext && (
+            <button className="menu-primary" onClick={onAdvance}>
+              Next
+            </button>
+          )}
+          {canFinish && (
+            <button className="menu-primary" onClick={onFinish}>
+              Finish Tutorial
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
