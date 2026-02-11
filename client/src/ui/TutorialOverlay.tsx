@@ -33,7 +33,10 @@ function getStepContent(state: GameState): StepContent {
       return {
         title: "Free tiles",
         body: "Free tiles glow. A tile is free when nothing is on top and at least one side is open.",
-        bullets: ["Tap a glowing tile when you're ready.", "You reveal the bound cell automatically."],
+        bullets: [
+          "Tap a glowing tile when you're ready.",
+          "You reveal the bound cell automatically.",
+        ],
         action: "Press Next to practice a reveal.",
       };
     case 2:

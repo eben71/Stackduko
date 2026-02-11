@@ -230,9 +230,7 @@ export class GameScene extends Phaser.Scene {
 
     const tile = tileSprite.tile;
     const labelBase = `Reveals: R${tile.row + 1} C${tile.col + 1}`;
-    const label = this.settings.tileNumbersVisible
-      ? `${labelBase} = ${tile.value}`
-      : labelBase;
+    const label = this.settings.tileNumbersVisible ? `${labelBase} = ${tile.value}` : labelBase;
 
     this.revealTooltip?.destroy();
     const tooltip = this.add

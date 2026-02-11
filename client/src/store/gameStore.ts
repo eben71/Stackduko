@@ -363,9 +363,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     const nextMoves = state.moves + 1;
     let nextPhase: GamePhase = state.phase;
-    let lastMessage: string | null = `Revealed R${tile.row + 1} C${tile.col + 1} = ${
-      tile.value
-    }`;
+    let lastMessage: string | null = `Revealed R${tile.row + 1} C${tile.col + 1} = ${tile.value}`;
     let tutorialStep = state.tutorialStep;
     let tutorialMovesDone = state.tutorialMovesDone;
     let tutorialHintUsed = state.tutorialHintUsed;
@@ -404,8 +402,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       tutorialMovesDone,
       tutorialHintUsed,
       tutorialLastReveal,
-      trayOverflowNotified:
-        overflowed && !trayOverflowNotified ? true : state.trayOverflowNotified,
+      trayOverflowNotified: overflowed && !trayOverflowNotified ? true : state.trayOverflowNotified,
     });
 
     if (overflowed && !trayOverflowNotified) {
@@ -486,9 +483,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hintsUsed: state.hintsUsed + 1,
       tutorialStep,
       tutorialHintUsed:
-        state.phase === "tutorial" && state.tutorialStep === 6
-          ? true
-          : state.tutorialHintUsed,
+        state.phase === "tutorial" && state.tutorialStep === 6 ? true : state.tutorialHintUsed,
       lastMessage: state.phase === "tutorial" ? "Hint active: remove the highlighted tile." : null,
     });
 
