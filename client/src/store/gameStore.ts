@@ -1,19 +1,19 @@
 import { create } from "zustand";
 import { getProgress, getSettings, updateProgress, type Difficulty } from "@/game/state/storage";
 import { generateLevel, type LevelData } from "@/logic/level/levelGenerator";
-import { getConflictCells } from "@/logic/sudoku/validate";
+import { mulberry32 } from "@/logic/rng";
 import {
-  applyMove,
+  canPlaceToken,
+  countTokens,
   createInitialState,
   createSolverContext,
-  getHintMove,
-  getLegalMoves,
-  isRevealLegal,
+  getOpenTiles,
+  isSolvable,
   isTileFree,
+  legalCellsForToken,
   type SolverContext,
   type SolverState,
 } from "@/logic/solver/solver";
-import { type TileSpec } from "@/logic/stack/types";
 
 export type GamePhase =
   | "boot"
@@ -27,14 +27,34 @@ export type GamePhase =
 
 export type AttemptResult = {
   ok: boolean;
-  reason?: "blocked" | "illegal" | "tray-full" | "not-playing" | "not-free" | "tutorial-locked";
+  reason?:
+    | "blocked"
+    | "illegal"
+    | "tray-full"
+    | "not-playing"
+    | "not-free"
+    | "tutorial-locked"
+    | "needs-placement"
+    | "mismatch";
   conflicts?: { row: number; col: number }[];
 };
 
-export type TutorialTargets = {
-  blockedIndex: number | null;
-  illegalIndex: number | null;
-};
+export type TutorialTargets = { blockedIndex: number | null; illegalIndex: number | null };
+
+type ActionRecord =
+  | { type: "pair"; first: number; second: number }
+  | {
+      type: "placement";
+      row: number;
+      col: number;
+      value: number;
+      source: "hand" | "tray";
+      index: number;
+      turnBefore: number;
+      barriersBefore: Record<string, number>;
+      pendingBefore: number;
+    }
+  | { type: "tray"; value: number; index: number };
 
 export type GameState = {
   phase: GamePhase;
@@ -42,17 +62,24 @@ export type GameState = {
   levelNumber: number;
   seed: number | null;
   layoutId: string | null;
-  tiles: TileSpec[];
+  tiles: LevelData["tiles"];
   present: boolean[];
-  revealed: SolverState["revealed"];
+  revealed: SolverState["grid"];
   solverContext: SolverContext | null;
+  handTokens: number[];
+  trayTokens: number[];
   tray: number[];
   trayLimit: number;
+  selectedToken: { source: "hand" | "tray"; index: number } | null;
+  pendingPairTile: number | null;
+  pendingPairPlacements: number;
+  barrierMap: Record<string, number>;
+  turn: number;
+  lives: number;
   hintsRemaining: number;
   hintsUsed: number;
-  undoLimit: number | null;
-  undoRemaining: number | null;
   undosUsed: number;
+  undoRemaining: number | null;
   moves: number;
   timeSeconds: number;
   hintTile: number | null;
@@ -64,8 +91,9 @@ export type GameState = {
   tutorialMovesDone: number;
   tutorialHintUsed: boolean;
   tutorialLastReveal: { row: number; col: number; value: number } | null;
-  trayOverflowNotified: boolean;
   pausedFrom: GamePhase | null;
+  history: ActionRecord[];
+  legalCells: Array<{ row: number; col: number }>;
   startGame: (difficulty?: Difficulty, levelNumber?: number, seed?: number) => LevelData;
   startTutorial: () => void;
   finishTutorial: () => void;
@@ -81,10 +109,13 @@ export type GameState = {
   useHint: () => number | null;
   clearHint: () => void;
   clearMessage: () => void;
+  selectToken: (source: "hand" | "tray", index: number) => void;
+  moveSelectedTokenToTray: () => AttemptResult;
+  placeSelectedToken: (row: number, col: number) => AttemptResult;
 };
 
-const TRAY_LIMIT = 7;
-const TUTORIAL_MOVES_REQUIRED = 5;
+const TRAY_LIMIT = 5;
+const TUTORIAL_MOVES_REQUIRED = 4;
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: "boot",
@@ -96,13 +127,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   present: [],
   revealed: [],
   solverContext: null,
+  handTokens: [],
+  trayTokens: [],
   tray: [],
   trayLimit: TRAY_LIMIT,
+  selectedToken: null,
+  pendingPairTile: null,
+  pendingPairPlacements: 0,
+  barrierMap: {},
+  turn: 0,
+  lives: 3,
   hintsRemaining: 0,
   hintsUsed: 0,
-  undoLimit: null,
-  undoRemaining: null,
   undosUsed: 0,
+  undoRemaining: 3,
   moves: 0,
   timeSeconds: 0,
   hintTile: null,
@@ -114,8 +152,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   tutorialMovesDone: 0,
   tutorialHintUsed: false,
   tutorialLastReveal: null,
-  trayOverflowNotified: false,
   pausedFrom: null,
+  history: [],
+  legalCells: [],
 
   startGame: (difficultyOverride, levelNumberOverride, seedOverride) => {
     const settings = getSettings();
@@ -123,17 +162,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const progress = getProgress();
     const levelNumber = levelNumberOverride ?? progress.highestLevelUnlocked[difficulty];
     const seed = seedOverride ?? Date.now();
-
     const level = generateLevel({ seed, difficulty, levelNumber });
     const context = createSolverContext(level.tiles);
     const session = createInitialState(level.tiles);
-
-    updateProgress({
-      totalPlays: progress.totalPlays + 1,
-      lastPlayedAt: new Date().toISOString(),
-      lastDifficultyPlayed: difficulty,
-      lastSeedPlayed: seed,
-    });
 
     set({
       phase: "playing",
@@ -143,14 +174,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       layoutId: level.layoutId,
       tiles: level.tiles,
       present: session.present,
-      revealed: session.revealed,
+      revealed: session.grid,
       solverContext: context,
+      handTokens: [],
+      trayTokens: [],
       tray: [],
-      hintsRemaining: settings.hintsPerLevel,
+      selectedToken: null,
+      pendingPairTile: null,
+      pendingPairPlacements: 0,
+      barrierMap: {},
+      turn: 0,
+      lives: 3,
+      hintsRemaining: 0,
       hintsUsed: 0,
-      undoLimit: settings.undoLimit,
-      undoRemaining: settings.undoLimit === null ? null : settings.undoLimit,
       undosUsed: 0,
+      undoRemaining: 3,
       moves: 0,
       timeSeconds: 0,
       hintTile: null,
@@ -159,59 +197,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       tutorialStep: 0,
       tutorialTargets: { blockedIndex: null, illegalIndex: null },
       tutorialMovesDone: 0,
-      tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
       tutorialHintUsed: false,
       tutorialLastReveal: null,
-      trayOverflowNotified: false,
       pausedFrom: null,
+      history: [],
+      legalCells: [],
     });
-
     return level;
   },
 
   startTutorial: () => {
-    const settings = getSettings();
-    const seed = 777001;
-    const level = generateLevel({ seed, difficulty: "easy", levelNumber: 1 });
-    const context = createSolverContext(level.tiles);
-    const session = createInitialState(level.tiles);
-
-    const free = getLegalMoves(context, session);
-    const blocked = level.tiles.findIndex((_, index) => !isTileFree(context, session, index));
-    const illegalIndex = free.find((index) => index !== blocked) ?? free[0] ?? null;
-
+    get().startGame("easy", 1, 777001);
     set({
       phase: "tutorial",
-      difficulty: "easy",
-      levelNumber: 1,
-      seed,
-      layoutId: level.layoutId,
-      tiles: level.tiles,
-      present: session.present,
-      revealed: session.revealed,
-      solverContext: context,
-      tray: [],
-      hintsRemaining: settings.hintsPerLevel,
-      hintsUsed: 0,
-      undoLimit: settings.undoLimit,
-      undoRemaining: settings.undoLimit === null ? null : settings.undoLimit,
-      undosUsed: 0,
-      moves: 0,
-      timeSeconds: 0,
-      hintTile: null,
-      lastConflicts: [],
-      lastMessage: null,
       tutorialStep: 0,
-      tutorialTargets: {
-        blockedIndex: blocked >= 0 ? blocked : null,
-        illegalIndex,
-      },
-      tutorialMovesDone: 0,
-      tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
-      tutorialHintUsed: false,
-      tutorialLastReveal: null,
-      trayOverflowNotified: false,
-      pausedFrom: null,
+      lastMessage: "Pair open matching tiles, then place both tokens.",
     });
   },
 
@@ -221,313 +221,367 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   advanceTutorial: () =>
-    set((state) => {
-      if (state.phase !== "tutorial") return {};
-      if (state.tutorialStep === 0) {
-        return { tutorialStep: 1, lastMessage: null };
-      }
-      if (state.tutorialStep === 1) {
-        return { tutorialStep: 2, lastMessage: null };
-      }
-      if (state.tutorialStep === 7) {
-        return {
-          tutorialStep: 8,
-          tutorialMovesDone: 0,
-          tutorialHintUsed: false,
-          hintTile: null,
-          lastMessage: null,
-        };
-      }
-      return {};
-    }),
-
+    set((s) => ({ tutorialStep: Math.min(5, s.tutorialStep + 1), lastMessage: null })),
   setPhase: (phase) => set({ phase }),
-
-  pauseGame: () =>
-    set((state) => ({
-      phase: "paused",
-      pausedFrom: state.phase === "tutorial" ? "tutorial" : "playing",
-    })),
-
-  resumeGame: () =>
-    set((state) => ({
-      phase: state.pausedFrom ?? "playing",
-      pausedFrom: null,
-    })),
-
+  pauseGame: () => set((state) => ({ phase: "paused", pausedFrom: state.phase })),
+  resumeGame: () => set((state) => ({ phase: state.pausedFrom ?? "playing", pausedFrom: null })),
   quitToMenu: () => set({ phase: "menu", pausedFrom: null }),
-
   restartLevel: () => {
-    const { difficulty, levelNumber, seed, phase, pausedFrom } = get();
-    if (phase === "tutorial" || (phase === "paused" && pausedFrom === "tutorial")) {
-      get().startTutorial();
-      return;
-    }
+    const { difficulty, levelNumber, seed, phase } = get();
+    if (phase === "tutorial") return get().startTutorial();
     get().startGame(difficulty, levelNumber, seed ?? Date.now());
   },
-
   incrementTime: () => set((state) => ({ timeSeconds: state.timeSeconds + 1 })),
 
   attemptRemoveTile: (index) => {
     const state = get();
-    if (state.phase !== "playing" && state.phase !== "tutorial") {
+    if (state.phase !== "playing" && state.phase !== "tutorial")
       return { ok: false, reason: "not-playing" };
-    }
-
-    if (!state.present[index]) {
-      return { ok: false, reason: "not-free" };
-    }
-
-    if (!state.solverContext) {
-      return { ok: false, reason: "not-playing" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep < 2) {
-      set({ lastMessage: "Read the tutorial panel, then press Next." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 7) {
-      set({ lastMessage: "Review Undo History, then press Next to continue." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 3) {
-      if (index === state.tutorialTargets.blockedIndex) {
-        set({
-          tutorialStep: 4,
-          hintTile: state.tutorialTargets.illegalIndex,
-          lastMessage:
-            "Blocked tile: it has a tile on top or both sides are blocked. Look for an open side.",
-        });
-        return { ok: false, reason: "blocked" };
-      }
-      set({ lastMessage: "Tap the blocked tile highlighted in the stack." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
+    if (!state.solverContext || !state.present[index]) return { ok: false, reason: "not-free" };
     if (!isTileFree(state.solverContext, state, index)) {
-      set({ lastMessage: "Blocked tile: one side must be open and nothing can sit on top." });
+      set({ lastMessage: "Tile is not open." });
       return { ok: false, reason: "blocked" };
     }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 6) {
-      if (!state.tutorialHintUsed) {
-        if (state.hintsRemaining <= 0) {
-          set({
-            tutorialHintUsed: true,
-            lastMessage: "Hints are unavailable in this run. Remove any legal free tile.",
-          });
-        } else {
-          set({ lastMessage: "Press Hint to highlight a safe tile first." });
-          return { ok: false, reason: "tutorial-locked" };
-        }
-      }
-      if (state.hintTile !== null && index !== state.hintTile) {
-        set({ lastMessage: "Remove the highlighted tile to complete the hint step." });
-        return { ok: false, reason: "tutorial-locked" };
-      }
+    if (state.handTokens.length + state.trayTokens.length > 0) {
+      set({ lastMessage: "Place buffered tokens before removing another pair." });
+      return { ok: false, reason: "needs-placement" };
     }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 4) {
-      if (index === state.tutorialTargets.illegalIndex) {
-        const demoConflicts = [
-          { row: state.tiles[index].row, col: state.tiles[index].col },
-          { row: state.tiles[index].row, col: Math.max(0, state.tiles[index].col - 1) },
-        ];
-        set({
-          tutorialStep: 5,
-          hintTile: null,
-          lastConflicts: demoConflicts,
-          lastMessage: `Illegal reveal: duplicates ${state.tiles[index].value} in this row.`,
-        });
-        return { ok: false, reason: "illegal", conflicts: demoConflicts };
-      }
-      set({ lastMessage: "Tap the highlighted tile to see a Sudoku conflict." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    const tile = state.tiles[index];
-    if (!isRevealLegal(state.revealed, tile.row, tile.col, tile.value)) {
-      const conflicts = getConflictCells(
-        state.revealed.map((row) => row.map((cell) => cell ?? 0)),
-        tile.row,
-        tile.col,
-        tile.value,
-      );
+    if (state.pendingPairTile === null) {
       set({
-        lastConflicts: conflicts,
-        lastMessage: describeConflict(state.revealed, tile.row, tile.col, tile.value),
+        pendingPairTile: index,
+        hintTile: null,
+        lastMessage: `Selected ${state.tiles[index].value}. Pick a matching open tile.`,
       });
-      return { ok: false, reason: "illegal", conflicts };
+      return { ok: true };
+    }
+    if (state.pendingPairTile === index) {
+      set({ pendingPairTile: null, lastMessage: "Pair selection cleared." });
+      return { ok: false, reason: "mismatch" };
+    }
+    const first = state.pendingPairTile;
+    if (state.tiles[first].value !== state.tiles[index].value) {
+      set({
+        pendingPairTile: null,
+        lives: Math.max(0, state.lives - 1),
+        lastMessage: "Tiles must match. Life lost.",
+      });
+      return { ok: false, reason: "mismatch" };
+    }
+    const present = [...state.present];
+    present[first] = false;
+    present[index] = false;
+    const value = state.tiles[index].value;
+    const handTokens = [value, value];
+    set({
+      present,
+      handTokens,
+      trayTokens: [],
+      tray: [],
+      selectedToken: { source: "hand", index: 0 },
+      pendingPairTile: null,
+      pendingPairPlacements: 2,
+      moves: state.moves + 1,
+      hintTile: null,
+      history: [...state.history, { type: "pair", first, second: index }],
+      lastMessage: `Pair removed. Place two ${value} tokens.`,
+      legalCells: legalCellsForToken(state.revealed, value, state.barrierMap),
+    });
+    return { ok: true };
+  },
+
+  selectToken: (source, index) => {
+    const state = get();
+    const pool = source === "hand" ? state.handTokens : state.trayTokens;
+    if (index < 0 || index >= pool.length) return;
+    const value = pool[index];
+    set({
+      selectedToken: { source, index },
+      legalCells: legalCellsForToken(state.revealed, value, state.barrierMap),
+    });
+  },
+
+  moveSelectedTokenToTray: () => {
+    const state = get();
+    if (!state.selectedToken || state.selectedToken.source !== "hand")
+      return { ok: false, reason: "not-playing" };
+    if (state.trayTokens.length >= state.trayLimit) return { ok: false, reason: "tray-full" };
+    const hand = [...state.handTokens];
+    const [value] = hand.splice(state.selectedToken.index, 1);
+    const tray = [...state.trayTokens, value];
+    set({
+      handTokens: hand,
+      trayTokens: tray,
+      tray,
+      selectedToken: tray.length > 0 ? { source: "tray", index: tray.length - 1 } : null,
+      history: [...state.history, { type: "tray", value, index: state.selectedToken.index }],
+      legalCells:
+        tray.length > 0
+          ? legalCellsForToken(state.revealed, tray[tray.length - 1], state.barrierMap)
+          : [],
+    });
+    return { ok: true };
+  },
+
+  placeSelectedToken: (row, col) => {
+    const state = get();
+    if (!state.selectedToken) return { ok: false, reason: "not-playing" };
+    const sourcePool = state.selectedToken.source === "hand" ? state.handTokens : state.trayTokens;
+    const value = sourcePool[state.selectedToken.index];
+    if (value === undefined) return { ok: false, reason: "not-playing" };
+
+    if (!canPlaceToken(state.revealed, value, row, col, state.barrierMap)) {
+      const lives = Math.max(0, state.lives - 1);
+      set({ lives, lastMessage: "Illegal placement. Life lost.", lastConflicts: [{ row, col }] });
+      return { ok: false, reason: "illegal", conflicts: [{ row, col }] };
     }
 
-    const next = applyMove(state.solverContext, state, index);
-    const nextTray = [...state.tray, index];
-    const overflowed = nextTray.length > state.trayLimit;
-    if (overflowed) {
-      nextTray.shift();
-    }
-    const nextMoves = state.moves + 1;
-    let nextPhase: GamePhase = state.phase;
-    let lastMessage: string | null = `Revealed R${tile.row + 1} C${tile.col + 1} = ${tile.value}`;
-    let tutorialStep = state.tutorialStep;
-    let tutorialMovesDone = state.tutorialMovesDone;
-    let tutorialHintUsed = state.tutorialHintUsed;
-    const tutorialLastReveal = { row: tile.row, col: tile.col, value: tile.value };
-    const trayOverflowNotified = state.trayOverflowNotified;
+    const revealed = state.revealed.map((r) => [...r]);
+    revealed[row][col] = value;
+    const nextPool = [...sourcePool];
+    nextPool.splice(state.selectedToken.index, 1);
+    const handTokens = state.selectedToken.source === "hand" ? nextPool : [...state.handTokens];
+    const trayTokens = state.selectedToken.source === "tray" ? nextPool : [...state.trayTokens];
 
-    if (state.phase === "tutorial") {
-      if (tutorialStep === 2) {
-        tutorialStep = 3;
-      } else if (
-        tutorialStep === 6 &&
-        (tutorialHintUsed || state.hintsRemaining <= 0) &&
-        (state.hintTile === null || state.hintTile === index)
-      ) {
-        tutorialStep = 7;
-        tutorialHintUsed = false;
-        lastMessage =
-          state.hintTile === null
-            ? "Great. You completed the hint step without available hints."
-            : "Nice! The hint showed a legal reveal.";
-      } else if (tutorialStep >= 8) {
-        tutorialMovesDone += 1;
-      }
+    const nextTurn = state.turn + 1;
+    const pendingPairPlacements = Math.max(0, state.pendingPairPlacements - 1);
+    const barriersBefore = { ...state.barrierMap };
+    let barrierMap = expireBarriers(state.barrierMap, nextTurn);
+    if (pendingPairPlacements === 0 && state.pendingPairPlacements > 0) {
+      barrierMap = applyFairBarriers({
+        difficulty: state.difficulty,
+        seed: state.seed ?? 0,
+        turn: nextTurn,
+        grid: revealed,
+        barrierMap,
+        requiredTokens: [...handTokens, ...trayTokens],
+      });
     }
 
-    if (next.present.every((value) => !value)) {
-      nextPhase = state.phase === "tutorial" ? "tutorial" : "win";
-    } else if (getLegalMoves(state.solverContext, next).length === 0) {
-      nextPhase = state.phase === "tutorial" ? "tutorial" : "stuck";
-      lastMessage = "No legal reveals. Use hint or undo.";
+    const selectedToken =
+      handTokens.length > 0
+        ? { source: "hand" as const, index: 0 }
+        : trayTokens.length > 0
+          ? { source: "tray" as const, index: 0 }
+          : null;
+    const legalCells = selectedToken
+      ? legalCellsForToken(
+          revealed,
+          (selectedToken.source === "hand" ? handTokens : trayTokens)[selectedToken.index],
+          barrierMap,
+        )
+      : [];
+
+    let phase = state.phase;
+    if (state.lives <= 0) {
+      phase = "stuck";
+    } else if (revealed.every((r) => r.every((c) => c !== null))) {
+      phase = "win";
+    } else if (
+      !isSolvable(state.solverContext!, {
+        present: state.present,
+        grid: revealed,
+        revealed,
+        handTokens,
+        trayTokens,
+        selectedToken,
+        pendingPairTile: state.pendingPairTile,
+        pendingPairPlacements,
+        lives: state.lives,
+        undosRemaining: state.undoRemaining ?? 0,
+        barriers: barrierMap,
+        turn: nextTurn,
+      })
+    ) {
+      phase = "stuck";
     }
 
     set({
-      present: next.present,
-      revealed: next.revealed,
-      tray: nextTray,
-      moves: nextMoves,
+      revealed,
+      handTokens,
+      trayTokens,
+      selectedToken,
+      legalCells,
+      barrierMap,
+      turn: nextTurn,
+      pendingPairPlacements,
+      moves: state.moves + 1,
       hintTile: null,
       lastConflicts: [],
-      lastMessage,
-      phase: nextPhase,
-      tutorialStep,
-      tutorialMovesDone,
-      tutorialHintUsed,
-      tutorialLastReveal,
-      trayOverflowNotified: overflowed && !trayOverflowNotified ? true : state.trayOverflowNotified,
+      lastMessage: `Placed ${value} at R${row + 1} C${col + 1}`,
+      phase,
+      history: [
+        ...state.history,
+        {
+          type: "placement",
+          row,
+          col,
+          value,
+          source: state.selectedToken.source,
+          index: state.selectedToken.index,
+          turnBefore: state.turn,
+          barriersBefore,
+          pendingBefore: state.pendingPairPlacements,
+        },
+      ],
     });
 
-    if (overflowed && !trayOverflowNotified) {
-      set({
-        lastMessage: `Undo history full. Older moves are locked in (undo affects the last ${state.trayLimit} reveals).`,
-      });
-    }
-
-    if (nextPhase === "win") {
-      finalizeWin(get());
-    }
-
+    if (phase === "win") finalizeWin(get());
     return { ok: true };
   },
 
   undoMove: () => {
     const state = get();
-    if (!state.solverContext) return false;
-    if (state.tray.length === 0) return false;
+    if (!state.history.length) return false;
     if (state.undoRemaining !== null && state.undoRemaining <= 0) return false;
-    if (state.phase === "tutorial" && state.tutorialStep < 5) {
-      set({ lastMessage: "Undo comes later in the tutorial." });
-      return false;
+    const action = state.history[state.history.length - 1];
+    const history = state.history.slice(0, -1);
+    if (action.type === "pair") {
+      const present = [...state.present];
+      present[action.first] = true;
+      present[action.second] = true;
+      set({
+        present,
+        handTokens: [],
+        trayTokens: [],
+        tray: [],
+        selectedToken: null,
+        pendingPairPlacements: 0,
+        history,
+        undoRemaining: (state.undoRemaining ?? 0) - 1,
+        undosUsed: state.undosUsed + 1,
+      });
+      return true;
     }
-
-    const index = state.tray[state.tray.length - 1];
-    const tile = state.tiles[index];
-    const present = [...state.present];
-    present[index] = true;
-
-    const revealed = state.revealed.map((row) => [...row]);
-    revealed[tile.row][tile.col] = null;
-
-    const nextUndoRemaining =
-      state.undoRemaining === null ? null : Math.max(0, state.undoRemaining - 1);
-
-    let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 5) {
-      tutorialStep = 6;
+    if (action.type === "tray") {
+      const trayTokens = [...state.trayTokens];
+      trayTokens.pop();
+      set({
+        handTokens: [...state.handTokens, action.value],
+        trayTokens,
+        tray: trayTokens,
+        selectedToken: { source: "hand", index: state.handTokens.length },
+        history,
+        undoRemaining: (state.undoRemaining ?? 0) - 1,
+        undosUsed: state.undosUsed + 1,
+      });
+      return true;
     }
-
+    const revealed = state.revealed.map((r) => [...r]);
+    revealed[action.row][action.col] = null;
+    const handTokens = [...state.handTokens];
+    const trayTokens = [...state.trayTokens];
+    if (action.source === "hand") handTokens.splice(action.index, 0, action.value);
+    else trayTokens.splice(action.index, 0, action.value);
     set({
-      present,
       revealed,
-      tray: state.tray.slice(0, -1),
+      handTokens,
+      trayTokens,
+      tray: trayTokens,
+      selectedToken: { source: action.source, index: action.index },
+      barrierMap: action.barriersBefore,
+      turn: action.turnBefore,
+      pendingPairPlacements: action.pendingBefore,
+      history,
+      undoRemaining: (state.undoRemaining ?? 0) - 1,
       undosUsed: state.undosUsed + 1,
-      undoRemaining: nextUndoRemaining,
-      phase: state.phase === "paused" ? "paused" : state.phase,
-      hintTile: null,
-      lastMessage: "Undo restored the tile and hid the grid cell.",
-      lastConflicts: [],
-      tutorialStep,
-      tutorialHintUsed: false,
+      phase: state.phase === "stuck" ? "playing" : state.phase,
     });
-
     return true;
   },
 
   useHint: () => {
     const state = get();
     if (!state.solverContext) return null;
-    if (state.hintsRemaining <= 0) return null;
-    if (state.phase === "tutorial" && state.tutorialStep < 6) {
-      set({ lastMessage: "Hints come later in the tutorial." });
-      return null;
+    const openTiles = getOpenTiles(state.solverContext, state);
+    const byValue = new Map<number, number[]>();
+    for (const index of openTiles) {
+      const value = state.tiles[index].value;
+      const arr = byValue.get(value) ?? [];
+      arr.push(index);
+      byValue.set(value, arr);
     }
-    const hintIndex = getHintMove(state.solverContext, state);
-    if (hintIndex === null) return null;
-
-    let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 6) {
-      tutorialStep = 6;
-    }
-
+    const pair = Array.from(byValue.values()).find((arr) => arr.length >= 2);
+    if (!pair) return null;
+    const hintTile = pair[0];
     set({
-      hintTile: hintIndex,
-      hintsRemaining: state.hintsRemaining - 1,
+      hintTile,
       hintsUsed: state.hintsUsed + 1,
-      tutorialStep,
-      tutorialHintUsed:
-        state.phase === "tutorial" && state.tutorialStep === 6 ? true : state.tutorialHintUsed,
-      lastMessage: state.phase === "tutorial" ? "Hint active: remove the highlighted tile." : null,
+      lastMessage: "Hint: start with a highlighted tile and find its match.",
     });
-
-    return hintIndex;
+    return hintTile;
   },
 
   clearHint: () => set({ hintTile: null }),
-
   clearMessage: () => set({ lastMessage: null }),
 }));
+
+function expireBarriers(barrierMap: Record<string, number>, turn: number) {
+  const next: Record<string, number> = {};
+  Object.entries(barrierMap).forEach(([key, expiry]) => {
+    if (expiry > turn) next[key] = expiry;
+  });
+  return next;
+}
+
+function applyFairBarriers(params: {
+  difficulty: Difficulty;
+  seed: number;
+  turn: number;
+  grid: SolverState["grid"];
+  barrierMap: Record<string, number>;
+  requiredTokens: number[];
+}) {
+  const countsByDifficulty: Record<Difficulty, number> = { easy: 2, medium: 3, hard: 4 };
+  const count = countsByDifficulty[params.difficulty];
+  const candidates: Array<{ row: number; col: number }> = [];
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (params.grid[row][col] === null) candidates.push({ row, col });
+    }
+  }
+  const rng = mulberry32(params.seed + params.turn * 101);
+  const shuffled = [...candidates].sort(() => rng() - 0.5);
+  const next = { ...params.barrierMap };
+  for (const cell of shuffled) {
+    if (Object.keys(next).length - Object.keys(params.barrierMap).length >= count) break;
+    const key = `${cell.row},${cell.col}`;
+    if (next[key] !== undefined) continue;
+    const trial = { ...next, [key]: params.turn + 2 };
+    if (isBarrierFair(params.grid, params.requiredTokens, trial)) {
+      next[key] = params.turn + 2;
+    }
+  }
+  return next;
+}
+
+function isBarrierFair(
+  grid: SolverState["grid"],
+  requiredTokens: number[],
+  barrierMap: Record<string, number>,
+) {
+  const tokenCounts = countTokens(requiredTokens);
+  for (const [value, needed] of Array.from(tokenCounts.entries())) {
+    const legalCount = legalCellsForToken(grid, value, barrierMap).length;
+    if (legalCount < needed) return false;
+  }
+  return true;
+}
 
 function finalizeWin(state: GameState) {
   if (state.seed === null) return;
   const progress = getProgress();
   const key = `${state.difficulty}:${state.seed}`;
   const timeMs = state.timeSeconds * 1000;
-  const moves = state.moves;
-
-  const currentBestTime = progress.bestTimesMs[key];
-  const currentBestMoves = progress.bestMoves[key];
-
-  const bestTimesMs =
-    currentBestTime === undefined || timeMs < currentBestTime ? { [key]: timeMs } : {};
-  const bestMoves =
-    currentBestMoves === undefined || moves < currentBestMoves ? { [key]: moves } : {};
-
   updateProgress({
     totalWins: progress.totalWins + 1,
-    bestTimesMs,
-    bestMoves,
+    bestTimesMs:
+      progress.bestTimesMs[key] === undefined || timeMs < progress.bestTimesMs[key]
+        ? { [key]: timeMs }
+        : {},
+    bestMoves:
+      progress.bestMoves[key] === undefined || state.moves < progress.bestMoves[key]
+        ? { [key]: state.moves }
+        : {},
     highestLevelUnlocked: {
       ...progress.highestLevelUnlocked,
       [state.difficulty]: Math.max(
@@ -536,44 +590,4 @@ function finalizeWin(state: GameState) {
       ),
     },
   });
-}
-
-function describeConflict(
-  revealed: SolverState["revealed"],
-  row: number,
-  col: number,
-  value: number,
-) {
-  if (revealed[row][col] !== null) {
-    return "Illegal reveal: that cell is already revealed.";
-  }
-  const rowConflict = revealed[row].some((cell, index) => index !== col && cell === value);
-  const colConflict = revealed.some((cells, index) => index !== row && cells[col] === value);
-  const boxRow = Math.floor(row / 3) * 3;
-  const boxCol = Math.floor(col / 3) * 3;
-  let boxConflict = false;
-  for (let r = boxRow; r < boxRow + 3; r += 1) {
-    for (let c = boxCol; c < boxCol + 3; c += 1) {
-      if (r === row && c === col) continue;
-      if (revealed[r][c] === value) {
-        boxConflict = true;
-        break;
-      }
-    }
-    if (boxConflict) break;
-  }
-  const parts = [];
-  if (rowConflict) parts.push("row");
-  if (colConflict) parts.push("column");
-  if (boxConflict) parts.push("box");
-  if (parts.length === 0) {
-    return "Illegal reveal.";
-  }
-  if (parts.length === 1) {
-    return `Illegal reveal: duplicates ${value} in this ${parts[0]}.`;
-  }
-  if (parts.length === 2) {
-    return `Illegal reveal: duplicates ${value} in this ${parts[0]} and ${parts[1]}.`;
-  }
-  return `Illegal reveal: duplicates ${value} in this row, column, and box.`;
 }

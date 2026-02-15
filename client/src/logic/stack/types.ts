@@ -3,8 +3,6 @@ export type TileSpec = {
   x: number;
   y: number;
   z: number;
-  row: number;
-  col: number;
   value: number;
 };
 

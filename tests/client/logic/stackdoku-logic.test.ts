@@ -4,15 +4,16 @@ import { generateLevel } from "../../../client/src/logic/level/levelGenerator";
 import {
   createInitialState,
   createSolverContext,
+  getLegalMoves,
   isSolvable,
 } from "../../../client/src/logic/solver/solver";
 
 describe("Free tile rule", () => {
   it("detects covered and side-blocked tiles", () => {
     const tiles = [
-      { id: "a", x: 0, y: 0, z: 0, row: 0, col: 0, value: 1 },
-      { id: "b", x: 1, y: 0, z: 0, row: 0, col: 1, value: 2 },
-      { id: "c", x: 0, y: 0, z: 1, row: 1, col: 0, value: 3 },
+      { id: "a", x: 0, y: 0, z: 0, value: 1 },
+      { id: "b", x: 1, y: 0, z: 0, value: 2 },
+      { id: "c", x: 0, y: 0, z: 1, value: 3 },
     ];
     const adjacency = buildAdjacency(tiles);
     const present = [true, true, true];
@@ -23,33 +24,24 @@ describe("Free tile rule", () => {
 });
 
 describe("Solver validation", () => {
-  it("solves a simple legal layout", () => {
+  it("finds legal pair starts", () => {
     const tiles = [
-      { id: "a", x: 0, y: 0, z: 0, row: 0, col: 0, value: 1 },
-      { id: "b", x: 1, y: 0, z: 0, row: 0, col: 1, value: 2 },
+      { id: "a", x: 0, y: 0, z: 0, value: 1 },
+      { id: "b", x: 1, y: 0, z: 0, value: 1 },
     ];
     const context = createSolverContext(tiles);
     const state = createInitialState(tiles);
+    expect(getLegalMoves(context, state)).toEqual([0, 1]);
     expect(isSolvable(context, state)).toBe(true);
-  });
-
-  it("rejects unsolvable duplicate reveals", () => {
-    const tiles = [
-      { id: "a", x: 0, y: 0, z: 0, row: 0, col: 0, value: 1 },
-      { id: "b", x: 1, y: 0, z: 0, row: 0, col: 1, value: 1 },
-    ];
-    const context = createSolverContext(tiles);
-    const state = createInitialState(tiles);
-    expect(isSolvable(context, state)).toBe(false);
   });
 });
 
 describe("Level generator", () => {
   it("produces a solvable level for a fixed seed", () => {
     const level = generateLevel({ seed: 1234, difficulty: "easy", levelNumber: 1, attemptCap: 10 });
-    expect(level.tiles).toHaveLength(81);
     const context = createSolverContext(level.tiles);
     const state = createInitialState(level.tiles);
+    expect(level.tiles).toHaveLength(81);
     expect(isSolvable(context, state)).toBe(true);
   });
 });

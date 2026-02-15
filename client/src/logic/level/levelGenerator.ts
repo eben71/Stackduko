@@ -105,23 +105,18 @@ function assignTiles(
   if (positions.length !== 81) {
     throw new Error("Layout must define 81 tile positions.");
   }
-  const cells: Array<{ row: number; col: number; value: number }> = [];
+  const values: number[] = [];
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
-      cells.push({ row, col, value: solution[row][col] });
+      values.push(solution[row][col]);
     }
   }
-  const shuffledCells = shuffle(rng, cells);
-  return positions.map((pos, index) => {
-    const cell = shuffledCells[index];
-    return {
-      id: `tile-${index}`,
-      x: pos.x,
-      y: pos.y,
-      z: pos.z,
-      row: cell.row,
-      col: cell.col,
-      value: cell.value,
-    };
-  });
+  const shuffledValues = shuffle(rng, values);
+  return positions.map((pos, index) => ({
+    id: `tile-${index}`,
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+    value: shuffledValues[index],
+  }));
 }
