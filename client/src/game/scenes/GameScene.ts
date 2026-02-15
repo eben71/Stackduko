@@ -37,6 +37,11 @@ export class GameScene extends Phaser.Scene {
     this.scale.on("resize", () => this.layoutScene());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribeStore?.();
+      this.unsubscribeStore = undefined;
+      this.boardRenderer = undefined;
+      this.gridLabel = undefined;
+      this.revealTooltip = undefined;
+      this.tiles.clear();
     });
   }
 
@@ -159,7 +164,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createBoard() {
-    this.boardRenderer?.updateSettings(this.settings);
     if (!this.boardRenderer) {
       this.boardRenderer = new BoardRenderer(
         this,
@@ -167,6 +171,8 @@ export class GameScene extends Phaser.Scene {
         this.layout.cellSize,
         this.settings,
       );
+    } else {
+      this.boardRenderer.updateSettings(this.settings);
     }
     if (!this.gridLabel) {
       this.gridLabel = this.add
@@ -286,6 +292,7 @@ export class GameScene extends Phaser.Scene {
 
   applySettings(next: Settings) {
     this.settings = next;
+    if (!this.sys.isActive()) return;
     this.tiles.forEach((tileSprite) => {
       tileSprite.setNumberVisible(next.tileNumbersVisible);
       tileSprite.setFontSize(next.largeText ? "36px" : "30px");
