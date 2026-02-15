@@ -97,21 +97,47 @@ export class BoardRenderer {
     this.barrierLabels = [];
     Object.entries(barriers).forEach(([key, expiry]) => {
       const [row, col] = key.split(",").map(Number);
-      this.barrierGraphics.fillStyle(0x0f172a, 0.35);
-      this.barrierGraphics.fillRect(
-        this.origin.x + col * this.cellSize,
-        this.origin.y + row * this.cellSize,
-        this.cellSize,
-        this.cellSize,
+      const cellX = this.origin.x + col * this.cellSize;
+      const cellY = this.origin.y + row * this.cellSize;
+      const centerX = cellX + this.cellSize / 2;
+      const centerY = cellY + this.cellSize / 2;
+
+      // Stronger blocked-cell treatment: dark slab, red cross, and rocky center.
+      this.barrierGraphics.fillStyle(0x111827, 0.65);
+      this.barrierGraphics.fillRect(cellX, cellY, this.cellSize, this.cellSize);
+
+      this.barrierGraphics.lineStyle(4, 0xef4444, 0.95);
+      this.barrierGraphics.lineBetween(
+        cellX + 6,
+        cellY + 6,
+        cellX + this.cellSize - 6,
+        cellY + this.cellSize - 6,
       );
+      this.barrierGraphics.lineBetween(
+        cellX + this.cellSize - 6,
+        cellY + 6,
+        cellX + 6,
+        cellY + this.cellSize - 6,
+      );
+
+      this.barrierGraphics.fillStyle(0x4b5563, 0.95);
+      this.barrierGraphics.fillCircle(centerX, centerY, Math.max(6, this.cellSize * 0.16));
+
+      this.barrierGraphics.lineStyle(2, 0x9ca3af, 0.85);
+      this.barrierGraphics.strokeCircle(centerX, centerY, Math.max(6, this.cellSize * 0.16));
+
+      const turnsLeft = Math.max(0, expiry - turn);
+
+      this.barrierGraphics.fillStyle(0xb91c1c, 1);
+      this.barrierGraphics.fillRoundedRect(cellX + this.cellSize - 20, cellY + 2, 18, 16, 4);
       const label = this.scene.add
-        .text(
-          this.origin.x + col * this.cellSize + this.cellSize - 6,
-          this.origin.y + row * this.cellSize + 4,
-          String(Math.max(0, expiry - turn)),
-          { fontFamily: "Fredoka, sans-serif", fontSize: "12px", color: "#ffffff" },
-        )
-        .setOrigin(1, 0)
+        .text(cellX + this.cellSize - 11, cellY + 10, String(turnsLeft), {
+          fontFamily: "Fredoka, sans-serif",
+          fontSize: "11px",
+          color: "#ffffff",
+          fontStyle: "700",
+        })
+        .setOrigin(0.5)
         .setDepth(30);
       this.barrierLabels.push(label);
     });
