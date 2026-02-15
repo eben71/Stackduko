@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { useGameStore } from "../../../client/src/store/gameStore";
-import { createSolverContext, createInitialState } from "../../../client/src/logic/solver/solver";
+import {
+  createInitialState,
+  createSolverContext,
+  isTileFree,
+} from "../../../client/src/logic/solver/solver";
 
 describe("gameStore extras", () => {
   it("pauses and resumes to previous phase", () => {
@@ -11,7 +15,7 @@ describe("gameStore extras", () => {
     expect(useGameStore.getState().phase).toBe("tutorial");
   });
 
-  it("blocks move when tray is full", () => {
+  it("drops oldest undo history entry when history is full", () => {
     const tiles = [
       { id: "a", x: 0, y: 0, z: 0, row: 0, col: 0, value: 1 },
       { id: "b", x: 1, y: 0, z: 0, row: 0, col: 1, value: 2 },
@@ -29,8 +33,8 @@ describe("gameStore extras", () => {
     });
 
     const result = useGameStore.getState().attemptRemoveTile(1);
-    expect(result.ok).toBe(false);
-    expect(result.reason).toBe("tray-full");
+    expect(result.ok).toBe(true);
+    expect(useGameStore.getState().tray).toEqual([1]);
   });
 
   it("blocks move when tile is covered", () => {
@@ -70,6 +74,28 @@ describe("gameStore extras", () => {
     useGameStore.getState().startTutorial();
     useGameStore.getState().finishTutorial();
     expect(useGameStore.getState().phase).toBe("menu");
+  });
+
+  it("allows tutorial step 6 progress when hints are unavailable", () => {
+    useGameStore.getState().startTutorial();
+    useGameStore.setState({
+      tutorialStep: 6,
+      hintsRemaining: 0,
+      hintTile: null,
+      tutorialHintUsed: false,
+    });
+
+    const state = useGameStore.getState();
+    const legalFreeTile = state.tiles.findIndex((_, tileIndex) => {
+      if (!state.solverContext) return false;
+      if (!state.present[tileIndex]) return false;
+      return isTileFree(state.solverContext, state, tileIndex);
+    });
+
+    expect(legalFreeTile).toBeGreaterThanOrEqual(0);
+    const result = useGameStore.getState().attemptRemoveTile(legalFreeTile);
+    expect(result.ok).toBe(true);
+    expect(useGameStore.getState().tutorialStep).toBe(7);
   });
 
   it("allows a legal move and sets hint", () => {
