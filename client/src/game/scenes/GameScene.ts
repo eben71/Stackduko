@@ -3,7 +3,7 @@ import { getSettings, type Settings } from "@/game/state/storage";
 import { BoardRenderer } from "@/game/rendering/BoardRenderer";
 import { TileSprite } from "@/game/rendering/TileSprite";
 import { useGameStore } from "@/store/gameStore";
-import { isTileFree } from "@/logic/solver/solver";
+import { isFreeTile } from "@/logic/stack/freeTile";
 
 const TILE_SIZE = 60;
 const ISO_OFFSET_X = -6;
@@ -54,6 +54,8 @@ export class GameScene extends Phaser.Scene {
     this.layoutScene();
     this.createTiles();
     this.createBoard();
+    this.input.off("pointerdown");
+    this.input.on("pointerdown", this.handleBoardClick, this);
     this.syncFromStore();
 
     this.unsubscribeStore?.();
@@ -179,7 +181,7 @@ export class GameScene extends Phaser.Scene {
         .text(
           this.layout.gridOriginX,
           this.layout.gridOriginY - 26,
-          "Revealed Sudoku (auto-filled)",
+          "Sudoku Grid (place selected token)",
           {
             fontFamily: "Fredoka, sans-serif",
             fontSize: "16px",
@@ -231,12 +233,11 @@ export class GameScene extends Phaser.Scene {
   private showRevealTooltip(tileSprite: TileSprite) {
     const state = useGameStore.getState();
     if (!state.solverContext) return;
-    const isFree = isTileFree(state.solverContext, state, tileSprite.index);
+    const isFree = isFreeTile(tileSprite.index, state.present, state.solverContext.adjacency);
     if (!isFree) return;
 
     const tile = tileSprite.tile;
-    const labelBase = `Reveals: R${tile.row + 1} C${tile.col + 1}`;
-    const label = this.settings.tileNumbersVisible ? `${labelBase} = ${tile.value}` : labelBase;
+    const label = `Tile ${tile.value} (open)`;
 
     this.revealTooltip?.destroy();
     const tooltip = this.add
@@ -273,6 +274,7 @@ export class GameScene extends Phaser.Scene {
     const context = state.solverContext;
 
     this.boardRenderer?.updateRevealed(state.revealed);
+    this.boardRenderer?.updateLegalHighlights(state.legalCells, state.barrierMap, state.turn);
 
     state.tiles.forEach((_, index) => {
       if (!state.present[index]) return;
@@ -282,12 +284,24 @@ export class GameScene extends Phaser.Scene {
 
     this.tiles.forEach((tileSprite, index) => {
       if (!state.present[index]) return;
-      const isFree = isTileFree(context, state, index);
+      const isFree = isFreeTile(index, state.present, context.adjacency);
       const isHint = state.hintTile === index;
       tileSprite.setHighlight(isHint ? "hint" : isFree ? "free" : "none");
       tileSprite.setNumberVisible(this.settings.tileNumbersVisible);
       tileSprite.container.setAlpha(isFree ? 1 : 0.6);
     });
+  }
+
+  private handleBoardClick(pointer: Phaser.Input.Pointer) {
+    const state = useGameStore.getState();
+    if (!state.selectedToken) return;
+    const col = Math.floor((pointer.x - this.layout.gridOriginX) / this.layout.cellSize);
+    const row = Math.floor((pointer.y - this.layout.gridOriginY) / this.layout.cellSize);
+    if (row < 0 || row > 8 || col < 0 || col > 8) return;
+    const result = useGameStore.getState().placeSelectedToken(row, col);
+    if (!result.ok && result.conflicts && this.boardRenderer) {
+      this.boardRenderer.showConflicts(result.conflicts);
+    }
   }
 
   applySettings(next: Settings) {

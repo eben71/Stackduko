@@ -15,53 +15,39 @@ export function HelpOverlay({ open, onClose }: HelpOverlayProps) {
         <button className="help-close" onClick={onClose} aria-label="Close help">
           <X size={20} />
         </button>
-        <div className="modal-title">How to Play</div>
+        <div className="modal-title">How to play Pair &amp; Place</div>
 
         <div className="help-section">
-          <div className="help-heading">Big picture</div>
+          <div className="help-heading">1) Remove Pair</div>
+          <p>Select two open matching tiles. Open = no tile above and at least one side free.</p>
+        </div>
+
+        <div className="help-section">
+          <div className="help-heading">2) Token Buffer</div>
           <p>
-            You do not place numbers. You reveal them by removing free tiles. Each 3D tile is bound
-            to exactly one Sudoku cell.
+            A removed pair gives 2 number tokens in the Token Buffer (max 5). If full, place tokens
+            before removing another pair.
           </p>
         </div>
 
         <div className="help-section">
-          <div className="help-heading">Reveals & the grid</div>
+          <div className="help-heading">3) Place Token</div>
+          <p>Choose a token, then place it in an empty cell that keeps row/column/box legal.</p>
+          <p>Example: a token “7” cannot go where a 7 already exists in its row, column, or box.</p>
+        </div>
+
+        <div className="help-section">
+          <div className="help-heading">4) Stuck, Lives, Undos</div>
           <ul>
-            <li>Removing a free tile auto-fills its number into the grid.</li>
-            <li>The grid shows revealed progress, not a placement board.</li>
-            <li>Sudoku rules apply only to revealed cells.</li>
-            <li>Hover/tap a free tile to see its row/column (value shown in Visible mode).</li>
+            <li>Stuck = no removable pair + full buffer + no legal token placement.</li>
+            <li>You have 3 undos per level.</li>
+            <li>If no undo is left when stuck, you lose a life (3 lives total).</li>
           </ul>
         </div>
 
         <div className="help-section">
-          <div className="help-heading">Free tiles</div>
-          <ul>
-            <li>No tile sits on top.</li>
-            <li>At least one horizontal side is open.</li>
-          </ul>
-        </div>
-
-        <div className="help-section">
-          <div className="help-heading">Undo History (Tray)</div>
-          <ul>
-            <li>The tray is your undo history, not storage.</li>
-            <li>If it fills, older reveals are locked in (play continues).</li>
-          </ul>
-        </div>
-
-        <div className="help-section">
-          <div className="help-heading">Win / Stuck</div>
-          <ul>
-            <li>Win: clear all tiles while keeping the revealed Sudoku valid.</li>
-            <li>Stuck: no legal reveals remain — use Undo, Hint, or Restart.</li>
-          </ul>
-        </div>
-
-        <div className="help-section">
-          <div className="help-heading">Hints</div>
-          <p>Hints highlight a legal free tile (safe reveal).</p>
+          <div className="help-heading">Win</div>
+          <p>Remove all tiles and fill the Sudoku correctly.</p>
         </div>
 
         <button className="menu-primary w-full mt-4" onClick={onClose}>

@@ -135,6 +135,7 @@ export function OverlayRoot() {
         phase === "paused" ||
         phase === "win" ||
         phase === "stuck" ||
+        phase === "fail" ||
         phase === "tutorial") && (
         <Hud
           state={gameState}
@@ -171,7 +172,7 @@ export function OverlayRoot() {
         />
       )}
 
-      {phase === "stuck" && (
+      {(phase === "stuck" || phase === "fail") && (
         <StuckModal
           state={gameState}
           onUndo={() => undoMove()}
@@ -182,7 +183,14 @@ export function OverlayRoot() {
       )}
 
       {phase === "tutorial" && (
-        <TutorialOverlay state={gameState} onFinish={finishTutorial} onAdvance={advanceTutorial} />
+        <TutorialOverlay
+          state={gameState}
+          onFinish={finishTutorial}
+          onAdvance={advanceTutorial}
+          onBack={() =>
+            useGameStore.setState((s) => ({ tutorialStep: Math.max(0, s.tutorialStep - 1) }))
+          }
+        />
       )}
 
       {gameState.lastMessage && settings.tutorialTips && (
@@ -207,7 +215,7 @@ function BootScreen() {
     <div className="overlay-screen overlay-boot">
       <div className="boot-card">
         <div className="boot-logo">Stackdoku</div>
-        <div className="boot-subtitle">Reveal and Resolve</div>
+        <div className="boot-subtitle">Pair & Place</div>
         <div className="boot-bar">
           <div className="boot-bar-fill" />
         </div>
@@ -237,7 +245,7 @@ function MainMenu({
     <div className="overlay-screen menu-screen">
       <div className="menu-card">
         <div className="menu-title">Stackdoku</div>
-        <div className="menu-subtitle">Reveal the numbers. Resolve the Sudoku.</div>
+        <div className="menu-subtitle">Remove pairs. Place tokens. Complete Sudoku.</div>
         <div className="menu-actions">
           {canContinue && (
             <button className="menu-primary" onClick={onContinue}>
@@ -329,9 +337,8 @@ function Hud({
   onRestart: () => void;
   onHelp: () => void;
 }) {
-  const undoDisabled =
-    state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
-  const hintDisabled = state.hintsRemaining <= 0;
+  const undoDisabled = state.undoRemaining !== null && state.undoRemaining <= 0;
+  const hintDisabled = false;
   const showPause = state.phase === "playing" || state.phase === "tutorial";
   return (
     <div className="hud-root">
@@ -345,8 +352,8 @@ function Hud({
           <div className="hud-value">{DIFFICULTY_LABELS[state.difficulty]}</div>
         </div>
         <div className="hud-card">
-          <div className="hud-label">Hints</div>
-          <div className="hud-value">{state.hintsRemaining}</div>
+          <div className="hud-label">Lives</div>
+          <div className="hud-value">{state.lives}</div>
         </div>
         <div className="hud-card">
           <div className="hud-label">Time</div>
@@ -364,13 +371,17 @@ function Hud({
 
       <div className="hud-bottom">
         <div className="tray">
-          <div className="tray-label">Undo History</div>
+          <div className="tray-label">Token Buffer</div>
           <div className="tray-items">
-            {state.tray.length === 0 && <div className="tray-empty">No reveals yet.</div>}
-            {state.tray.map((index, idx) => (
-              <div key={`${index}-${idx}`} className="tray-tile">
-                {state.tiles[index]?.value ?? ""}
-              </div>
+            {state.trayTokens.length === 0 && <div className="tray-empty">Empty</div>}
+            {state.trayTokens.map((value, idx) => (
+              <button
+                key={`t-${idx}`}
+                className="tray-tile"
+                onClick={() => useGameStore.getState().selectToken("tray", idx)}
+              >
+                {value}
+              </button>
             ))}
           </div>
         </div>
@@ -379,7 +390,7 @@ function Hud({
             Undo
           </button>
           <button className="hud-action" onClick={onHint} disabled={hintDisabled}>
-            Hint (safe reveal)
+            Remove Pair Hint
           </button>
           <button className="hud-action" onClick={onRestart}>
             Restart
@@ -450,8 +461,8 @@ function WinModal({
         <div className="modal-stats">
           <div>Time: {state.timeSeconds}s</div>
           <div>Moves: {state.moves}</div>
-          <div>Undos used: {state.undosUsed}</div>
-          <div>Hints used: {state.hintsUsed}</div>
+          <div>Lives left: {state.lives}</div>
+          <div>Undos left: {state.undoRemaining ?? "∞"}</div>
         </div>
         <div className="modal-actions">
           <button className="menu-primary" onClick={onNext}>
@@ -482,19 +493,18 @@ function StuckModal({
   onRestart: () => void;
   onQuit: () => void;
 }) {
-  const undoDisabled =
-    state.tray.length === 0 || (state.undoRemaining !== null && state.undoRemaining <= 0);
-  const hintDisabled = state.hintsRemaining <= 0;
+  const undoDisabled = state.undoRemaining !== null && state.undoRemaining <= 0;
+  const hintDisabled = false;
   return (
     <div className="overlay-modal">
       <div className="modal-card">
-        <div className="modal-title">No legal reveals</div>
+        <div className="modal-title">Stuck / No legal moves</div>
         <div className="modal-actions">
           <button className="menu-secondary" onClick={onUndo} disabled={undoDisabled}>
             Undo
           </button>
           <button className="menu-secondary" onClick={onHint} disabled={hintDisabled}>
-            Hint (safe reveal)
+            Remove Pair Hint
           </button>
           <button className="menu-secondary" onClick={onRestart}>
             Restart

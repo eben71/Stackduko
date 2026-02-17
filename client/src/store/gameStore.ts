@@ -1,19 +1,16 @@
 import { create } from "zustand";
 import { getProgress, getSettings, updateProgress, type Difficulty } from "@/game/state/storage";
-import { generateLevel, type LevelData } from "@/logic/level/levelGenerator";
-import { getConflictCells } from "@/logic/sudoku/validate";
+import { isStuckState } from "@/game/mechanics/livesUndos";
+import { canPlaceValue, legalCellsForValue } from "@/game/mechanics/placement";
+import { hasAnyRemovablePair, isRemovablePair } from "@/game/mechanics/pairRemoval";
 import {
-  applyMove,
-  createInitialState,
-  createSolverContext,
-  getHintMove,
-  getLegalMoves,
-  isRevealLegal,
-  isTileFree,
-  type SolverContext,
-  type SolverState,
-} from "@/logic/solver/solver";
-import { type TileSpec } from "@/logic/stack/types";
+  TOKEN_BUFFER_CAPACITY,
+  addTokens,
+  canAddTokens,
+  removeTokenAt,
+} from "@/game/mechanics/tokenBuffer";
+import { generateLevel, type LevelData } from "@/logic/level/levelGenerator";
+import { buildAdjacency } from "@/logic/stack/freeTile";
 
 export type GamePhase =
   | "boot"
@@ -23,18 +20,27 @@ export type GamePhase =
   | "playing"
   | "paused"
   | "win"
-  | "stuck";
+  | "stuck"
+  | "fail";
 
 export type AttemptResult = {
   ok: boolean;
-  reason?: "blocked" | "illegal" | "tray-full" | "not-playing" | "not-free" | "tutorial-locked";
+  reason?:
+    | "blocked"
+    | "illegal"
+    | "tray-full"
+    | "not-playing"
+    | "not-free"
+    | "needs-placement"
+    | "mismatch";
   conflicts?: { row: number; col: number }[];
 };
 
-export type TutorialTargets = {
-  blockedIndex: number | null;
-  illegalIndex: number | null;
-};
+type ActionRecord =
+  | { type: "pair"; first: number; second: number; value: number }
+  | { type: "placement"; row: number; col: number; value: number; tokenIndex: number };
+
+type SelectedToken = { source: "tray"; index: number } | null;
 
 export type GameState = {
   phase: GamePhase;
@@ -42,30 +48,40 @@ export type GameState = {
   levelNumber: number;
   seed: number | null;
   layoutId: string | null;
-  tiles: TileSpec[];
+  tiles: LevelData["tiles"];
   present: boolean[];
-  revealed: SolverState["revealed"];
-  solverContext: SolverContext | null;
+  revealed: Array<Array<number | null>>;
+  solution: number[][];
+  givens: boolean[][];
+  trayTokens: number[];
   tray: number[];
   trayLimit: number;
-  hintsRemaining: number;
-  hintsUsed: number;
-  undoLimit: number | null;
-  undoRemaining: number | null;
-  undosUsed: number;
+  selectedToken: SelectedToken;
+  pendingPairTile: number | null;
+  lives: number;
+  undoRemaining: number;
   moves: number;
   timeSeconds: number;
   hintTile: number | null;
   lastConflicts: { row: number; col: number }[];
   lastMessage: string | null;
   tutorialStep: number;
-  tutorialTargets: TutorialTargets;
+  pausedFrom: GamePhase | null;
+  history: ActionRecord[];
+  legalCells: Array<{ row: number; col: number }>;
+  handTokens: number[];
+  barrierMap: Record<string, number>;
+  turn: number;
+  pendingPairPlacements: number;
+  hintsRemaining: number;
+  hintsUsed: number;
+  undosUsed: number;
+  tutorialTargets: { blockedIndex: number | null; illegalIndex: number | null };
   tutorialMovesRequired: number;
   tutorialMovesDone: number;
   tutorialHintUsed: boolean;
   tutorialLastReveal: { row: number; col: number; value: number } | null;
-  trayOverflowNotified: boolean;
-  pausedFrom: GamePhase | null;
+  solverContext: { adjacency: ReturnType<typeof buildAdjacency> } | null;
   startGame: (difficulty?: Difficulty, levelNumber?: number, seed?: number) => LevelData;
   startTutorial: () => void;
   finishTutorial: () => void;
@@ -81,10 +97,13 @@ export type GameState = {
   useHint: () => number | null;
   clearHint: () => void;
   clearMessage: () => void;
+  selectToken: (_source: "hand" | "tray", index: number) => void;
+  moveSelectedTokenToTray: () => AttemptResult;
+  placeSelectedToken: (row: number, col: number) => AttemptResult;
 };
 
-const TRAY_LIMIT = 7;
-const TUTORIAL_MOVES_REQUIRED = 5;
+const baseGrid = () => Array.from({ length: 9 }, () => Array<number | null>(9).fill(null));
+const baseBoolGrid = () => Array.from({ length: 9 }, () => Array<boolean>(9).fill(false));
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: "boot",
@@ -94,28 +113,38 @@ export const useGameStore = create<GameState>((set, get) => ({
   layoutId: null,
   tiles: [],
   present: [],
-  revealed: [],
-  solverContext: null,
+  revealed: baseGrid(),
+  solution: Array.from({ length: 9 }, () => Array(9).fill(0)),
+  givens: baseBoolGrid(),
+  trayTokens: [],
   tray: [],
-  trayLimit: TRAY_LIMIT,
-  hintsRemaining: 0,
-  hintsUsed: 0,
-  undoLimit: null,
-  undoRemaining: null,
-  undosUsed: 0,
+  trayLimit: TOKEN_BUFFER_CAPACITY,
+  selectedToken: null,
+  pendingPairTile: null,
+  lives: 3,
+  undoRemaining: 3,
   moves: 0,
   timeSeconds: 0,
   hintTile: null,
   lastConflicts: [],
   lastMessage: null,
   tutorialStep: 0,
+  pausedFrom: null,
+  history: [],
+  legalCells: [],
+  handTokens: [],
+  barrierMap: {},
+  turn: 0,
+  pendingPairPlacements: 0,
+  hintsRemaining: 0,
+  hintsUsed: 0,
+  undosUsed: 0,
   tutorialTargets: { blockedIndex: null, illegalIndex: null },
-  tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
+  tutorialMovesRequired: 5,
   tutorialMovesDone: 0,
   tutorialHintUsed: false,
   tutorialLastReveal: null,
-  trayOverflowNotified: false,
-  pausedFrom: null,
+  solverContext: null,
 
   startGame: (difficultyOverride, levelNumberOverride, seedOverride) => {
     const settings = getSettings();
@@ -123,411 +152,293 @@ export const useGameStore = create<GameState>((set, get) => ({
     const progress = getProgress();
     const levelNumber = levelNumberOverride ?? progress.highestLevelUnlocked[difficulty];
     const seed = seedOverride ?? Date.now();
-
-    const level = generateLevel({ seed, difficulty, levelNumber });
-    const context = createSolverContext(level.tiles);
-    const session = createInitialState(level.tiles);
-
-    updateProgress({
-      totalPlays: progress.totalPlays + 1,
-      lastPlayedAt: new Date().toISOString(),
-      lastDifficultyPlayed: difficulty,
-      lastSeedPlayed: seed,
-    });
-
+    const level = generateLevel({ difficulty, levelNumber, seed });
     set({
       phase: "playing",
       difficulty,
       levelNumber,
-      seed,
+      seed: level.seed,
       layoutId: level.layoutId,
       tiles: level.tiles,
-      present: session.present,
-      revealed: session.revealed,
-      solverContext: context,
+      present: level.tiles.map(() => true),
+      revealed: level.puzzle.map((row) => [...row]),
+      solution: level.solution,
+      givens: level.givens,
+      trayTokens: [],
       tray: [],
-      hintsRemaining: settings.hintsPerLevel,
-      hintsUsed: 0,
-      undoLimit: settings.undoLimit,
-      undoRemaining: settings.undoLimit === null ? null : settings.undoLimit,
-      undosUsed: 0,
+      selectedToken: null,
+      pendingPairTile: null,
+      lives: 3,
+      undoRemaining: 3,
       moves: 0,
       timeSeconds: 0,
       hintTile: null,
       lastConflicts: [],
       lastMessage: null,
       tutorialStep: 0,
-      tutorialTargets: { blockedIndex: null, illegalIndex: null },
-      tutorialMovesDone: 0,
-      tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
-      tutorialHintUsed: false,
-      tutorialLastReveal: null,
-      trayOverflowNotified: false,
-      pausedFrom: null,
+      history: [],
+      legalCells: [],
+      handTokens: [],
+      barrierMap: {},
+      turn: 0,
+      pendingPairPlacements: 0,
+      hintsRemaining: 0,
+      hintsUsed: 0,
+      undosUsed: 0,
+      solverContext: { adjacency: buildAdjacency(level.tiles) },
     });
-
     return level;
   },
 
   startTutorial: () => {
-    const settings = getSettings();
-    const seed = 777001;
-    const level = generateLevel({ seed, difficulty: "easy", levelNumber: 1 });
-    const context = createSolverContext(level.tiles);
-    const session = createInitialState(level.tiles);
-
-    const free = getLegalMoves(context, session);
-    const blocked = level.tiles.findIndex((_, index) => !isTileFree(context, session, index));
-    const illegalIndex = free.find((index) => index !== blocked) ?? free[0] ?? null;
-
-    set({
-      phase: "tutorial",
-      difficulty: "easy",
-      levelNumber: 1,
-      seed,
-      layoutId: level.layoutId,
-      tiles: level.tiles,
-      present: session.present,
-      revealed: session.revealed,
-      solverContext: context,
-      tray: [],
-      hintsRemaining: settings.hintsPerLevel,
-      hintsUsed: 0,
-      undoLimit: settings.undoLimit,
-      undoRemaining: settings.undoLimit === null ? null : settings.undoLimit,
-      undosUsed: 0,
-      moves: 0,
-      timeSeconds: 0,
-      hintTile: null,
-      lastConflicts: [],
-      lastMessage: null,
-      tutorialStep: 0,
-      tutorialTargets: {
-        blockedIndex: blocked >= 0 ? blocked : null,
-        illegalIndex,
-      },
-      tutorialMovesDone: 0,
-      tutorialMovesRequired: TUTORIAL_MOVES_REQUIRED,
-      tutorialHintUsed: false,
-      tutorialLastReveal: null,
-      trayOverflowNotified: false,
-      pausedFrom: null,
-    });
+    get().startGame("easy", 1, 7001);
+    set({ phase: "tutorial", tutorialStep: 0, lastMessage: "Welcome to Pair & Place." });
   },
-
   finishTutorial: () => {
     updateProgress({ tutorialCompleted: true });
     set({ phase: "menu", tutorialStep: 0 });
   },
-
-  advanceTutorial: () =>
-    set((state) => {
-      if (state.phase !== "tutorial") return {};
-      if (state.tutorialStep === 0) {
-        return { tutorialStep: 1, lastMessage: null };
-      }
-      if (state.tutorialStep === 1) {
-        return { tutorialStep: 2, lastMessage: null };
-      }
-      if (state.tutorialStep === 7) {
-        return {
-          tutorialStep: 8,
-          tutorialMovesDone: 0,
-          tutorialHintUsed: false,
-          hintTile: null,
-          lastMessage: null,
-        };
-      }
-      return {};
-    }),
-
+  advanceTutorial: () => set((s) => ({ tutorialStep: Math.min(4, s.tutorialStep + 1) })),
   setPhase: (phase) => set({ phase }),
-
-  pauseGame: () =>
-    set((state) => ({
-      phase: "paused",
-      pausedFrom: state.phase === "tutorial" ? "tutorial" : "playing",
-    })),
-
-  resumeGame: () =>
-    set((state) => ({
-      phase: state.pausedFrom ?? "playing",
-      pausedFrom: null,
-    })),
-
+  pauseGame: () => set((state) => ({ phase: "paused", pausedFrom: state.phase })),
+  resumeGame: () => set((state) => ({ phase: state.pausedFrom ?? "playing", pausedFrom: null })),
   quitToMenu: () => set({ phase: "menu", pausedFrom: null }),
-
   restartLevel: () => {
-    const { difficulty, levelNumber, seed, phase, pausedFrom } = get();
-    if (phase === "tutorial" || (phase === "paused" && pausedFrom === "tutorial")) {
-      get().startTutorial();
-      return;
-    }
+    const { difficulty, levelNumber, seed } = get();
     get().startGame(difficulty, levelNumber, seed ?? Date.now());
   },
-
-  incrementTime: () => set((state) => ({ timeSeconds: state.timeSeconds + 1 })),
+  incrementTime: () => set((s) => ({ timeSeconds: s.timeSeconds + 1 })),
 
   attemptRemoveTile: (index) => {
-    const state = get();
-    if (state.phase !== "playing" && state.phase !== "tutorial") {
+    const s = get();
+    if (s.phase !== "playing" && s.phase !== "tutorial")
       return { ok: false, reason: "not-playing" };
-    }
+    if (!s.solverContext || !s.present[index]) return { ok: false, reason: "not-free" };
+    if (s.trayTokens.length >= s.trayLimit) return { ok: false, reason: "tray-full" };
 
-    if (!state.present[index]) {
-      return { ok: false, reason: "not-free" };
-    }
-
-    if (!state.solverContext) {
-      return { ok: false, reason: "not-playing" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep < 2) {
-      set({ lastMessage: "Read the tutorial panel, then press Next." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 7) {
-      set({ lastMessage: "Review Undo History, then press Next to continue." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 3) {
-      if (index === state.tutorialTargets.blockedIndex) {
-        set({
-          tutorialStep: 4,
-          hintTile: state.tutorialTargets.illegalIndex,
-          lastMessage:
-            "Blocked tile: it has a tile on top or both sides are blocked. Look for an open side.",
-        });
-        return { ok: false, reason: "blocked" };
-      }
-      set({ lastMessage: "Tap the blocked tile highlighted in the stack." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    if (!isTileFree(state.solverContext, state, index)) {
-      set({ lastMessage: "Blocked tile: one side must be open and nothing can sit on top." });
-      return { ok: false, reason: "blocked" };
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 6) {
-      if (!state.tutorialHintUsed) {
-        if (state.hintsRemaining <= 0) {
-          set({
-            tutorialHintUsed: true,
-            lastMessage: "Hints are unavailable in this run. Remove any legal free tile.",
-          });
-        } else {
-          set({ lastMessage: "Press Hint to highlight a safe tile first." });
-          return { ok: false, reason: "tutorial-locked" };
-        }
-      }
-      if (state.hintTile !== null && index !== state.hintTile) {
-        set({ lastMessage: "Remove the highlighted tile to complete the hint step." });
-        return { ok: false, reason: "tutorial-locked" };
-      }
-    }
-
-    if (state.phase === "tutorial" && state.tutorialStep === 4) {
-      if (index === state.tutorialTargets.illegalIndex) {
-        const demoConflicts = [
-          { row: state.tiles[index].row, col: state.tiles[index].col },
-          { row: state.tiles[index].row, col: Math.max(0, state.tiles[index].col - 1) },
-        ];
-        set({
-          tutorialStep: 5,
-          hintTile: null,
-          lastConflicts: demoConflicts,
-          lastMessage: `Illegal reveal: duplicates ${state.tiles[index].value} in this row.`,
-        });
-        return { ok: false, reason: "illegal", conflicts: demoConflicts };
-      }
-      set({ lastMessage: "Tap the highlighted tile to see a Sudoku conflict." });
-      return { ok: false, reason: "tutorial-locked" };
-    }
-
-    const tile = state.tiles[index];
-    if (!isRevealLegal(state.revealed, tile.row, tile.col, tile.value)) {
-      const conflicts = getConflictCells(
-        state.revealed.map((row) => row.map((cell) => cell ?? 0)),
-        tile.row,
-        tile.col,
-        tile.value,
-      );
+    if (s.pendingPairTile === null) {
       set({
-        lastConflicts: conflicts,
-        lastMessage: describeConflict(state.revealed, tile.row, tile.col, tile.value),
+        pendingPairTile: index,
+        lastMessage: `Selected ${s.tiles[index].value}. Pick its open match.`,
       });
-      return { ok: false, reason: "illegal", conflicts };
+      return { ok: true };
     }
 
-    const next = applyMove(state.solverContext, state, index);
-    const nextTray = [...state.tray, index];
-    const overflowed = nextTray.length > state.trayLimit;
-    if (overflowed) {
-      nextTray.shift();
-    }
-    const nextMoves = state.moves + 1;
-    let nextPhase: GamePhase = state.phase;
-    let lastMessage: string | null = `Revealed R${tile.row + 1} C${tile.col + 1} = ${tile.value}`;
-    let tutorialStep = state.tutorialStep;
-    let tutorialMovesDone = state.tutorialMovesDone;
-    let tutorialHintUsed = state.tutorialHintUsed;
-    const tutorialLastReveal = { row: tile.row, col: tile.col, value: tile.value };
-    const trayOverflowNotified = state.trayOverflowNotified;
-
-    if (state.phase === "tutorial") {
-      if (tutorialStep === 2) {
-        tutorialStep = 3;
-      } else if (
-        tutorialStep === 6 &&
-        (tutorialHintUsed || state.hintsRemaining <= 0) &&
-        (state.hintTile === null || state.hintTile === index)
-      ) {
-        tutorialStep = 7;
-        tutorialHintUsed = false;
-        lastMessage =
-          state.hintTile === null
-            ? "Great. You completed the hint step without available hints."
-            : "Nice! The hint showed a legal reveal.";
-      } else if (tutorialStep >= 8) {
-        tutorialMovesDone += 1;
-      }
+    const first = s.pendingPairTile;
+    if (!isRemovablePair(s.tiles, s.present, s.solverContext.adjacency, first, index)) {
+      set({
+        pendingPairTile: null,
+        lastMessage: "Only matching open tiles can be removed.",
+        lastConflicts: [],
+      });
+      return { ok: false, reason: "mismatch" };
     }
 
-    if (next.present.every((value) => !value)) {
-      nextPhase = state.phase === "tutorial" ? "tutorial" : "win";
-    } else if (getLegalMoves(state.solverContext, next).length === 0) {
-      nextPhase = state.phase === "tutorial" ? "tutorial" : "stuck";
-      lastMessage = "No legal reveals. Use hint or undo.";
+    const value = s.tiles[index].value;
+    if (!canAddTokens(s.trayTokens, 2, s.trayLimit)) {
+      set({ pendingPairTile: null, lastMessage: "Token Buffer is full." });
+      return { ok: false, reason: "tray-full" };
     }
 
+    const present = [...s.present];
+    present[first] = false;
+    present[index] = false;
+    const trayTokens = addTokens(s.trayTokens, value, 2);
     set({
-      present: next.present,
-      revealed: next.revealed,
-      tray: nextTray,
-      moves: nextMoves,
-      hintTile: null,
-      lastConflicts: [],
-      lastMessage,
-      phase: nextPhase,
-      tutorialStep,
-      tutorialMovesDone,
-      tutorialHintUsed,
-      tutorialLastReveal,
-      trayOverflowNotified: overflowed && !trayOverflowNotified ? true : state.trayOverflowNotified,
+      present,
+      trayTokens,
+      tray: trayTokens,
+      selectedToken: { source: "tray", index: trayTokens.length - 1 },
+      pendingPairTile: null,
+      history: [...s.history, { type: "pair", first, second: index, value }],
+      moves: s.moves + 1,
+      legalCells: legalCellsForValue(s.revealed, value),
+      lastMessage: `Pair removed. Added 2x ${value} to Token Buffer.`,
     });
 
-    if (overflowed && !trayOverflowNotified) {
+    evaluateState();
+    return { ok: true };
+  },
+
+  selectToken: (_source, index) => {
+    const s = get();
+    if (index < 0 || index >= s.trayTokens.length) return;
+    const value = s.trayTokens[index];
+    set({
+      selectedToken: { source: "tray", index },
+      legalCells: legalCellsForValue(s.revealed, value),
+    });
+  },
+
+  moveSelectedTokenToTray: () => ({ ok: false, reason: "not-playing" }),
+
+  placeSelectedToken: (row, col) => {
+    const s = get();
+    if (!s.selectedToken) return { ok: false, reason: "not-playing" };
+    const value = s.trayTokens[s.selectedToken.index];
+    if (value === undefined) return { ok: false, reason: "not-playing" };
+
+    if (!canPlaceValue(s.revealed, row, col, value)) {
       set({
-        lastMessage: `Undo history full. Older moves are locked in (undo affects the last ${state.trayLimit} reveals).`,
+        lastConflicts: [{ row, col }],
+        lastMessage: "Illegal placement.",
+        legalCells: legalCellsForValue(s.revealed, value),
       });
+      return { ok: false, reason: "illegal", conflicts: [{ row, col }] };
     }
 
-    if (nextPhase === "win") {
-      finalizeWin(get());
-    }
+    const revealed = s.revealed.map((r) => [...r]);
+    revealed[row][col] = value;
+    const removed = removeTokenAt(s.trayTokens, s.selectedToken.index);
+    const trayTokens = removed.next;
+    const nextSelected = trayTokens.length > 0 ? { source: "tray" as const, index: 0 } : null;
+    set({
+      revealed,
+      trayTokens,
+      tray: trayTokens,
+      selectedToken: nextSelected,
+      legalCells: nextSelected ? legalCellsForValue(revealed, trayTokens[nextSelected.index]) : [],
+      history: [
+        ...s.history,
+        { type: "placement", row, col, value, tokenIndex: s.selectedToken.index },
+      ],
+      moves: s.moves + 1,
+      lastConflicts: [],
+      lastMessage: `Placed ${value} at R${row + 1} C${col + 1}`,
+    });
 
+    evaluateState();
     return { ok: true };
   },
 
   undoMove: () => {
-    const state = get();
-    if (!state.solverContext) return false;
-    if (state.tray.length === 0) return false;
-    if (state.undoRemaining !== null && state.undoRemaining <= 0) return false;
-    if (state.phase === "tutorial" && state.tutorialStep < 5) {
-      set({ lastMessage: "Undo comes later in the tutorial." });
-      return false;
+    const s = get();
+    if (s.undoRemaining <= 0 || s.history.length === 0) return false;
+    const action = s.history[s.history.length - 1];
+    const history = s.history.slice(0, -1);
+    if (action.type === "placement") {
+      const revealed = s.revealed.map((r) => [...r]);
+      revealed[action.row][action.col] = null;
+      const trayTokens = [...s.trayTokens];
+      trayTokens.splice(Math.min(action.tokenIndex, trayTokens.length), 0, action.value);
+      set({
+        revealed,
+        trayTokens,
+        tray: trayTokens,
+        selectedToken: {
+          source: "tray",
+          index: Math.min(action.tokenIndex, trayTokens.length - 1),
+        },
+        legalCells: legalCellsForValue(revealed, action.value),
+        history,
+        undoRemaining: s.undoRemaining - 1,
+        undosUsed: s.undosUsed + 1,
+        phase: "playing",
+      });
+      return true;
     }
 
-    const index = state.tray[state.tray.length - 1];
-    const tile = state.tiles[index];
-    const present = [...state.present];
-    present[index] = true;
-
-    const revealed = state.revealed.map((row) => [...row]);
-    revealed[tile.row][tile.col] = null;
-
-    const nextUndoRemaining =
-      state.undoRemaining === null ? null : Math.max(0, state.undoRemaining - 1);
-
-    let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 5) {
-      tutorialStep = 6;
+    const present = [...s.present];
+    present[action.first] = true;
+    present[action.second] = true;
+    const trayTokens = [...s.trayTokens];
+    let removed = 0;
+    for (let i = trayTokens.length - 1; i >= 0 && removed < 2; i -= 1) {
+      if (trayTokens[i] === action.value) {
+        trayTokens.splice(i, 1);
+        removed += 1;
+      }
     }
-
     set({
       present,
-      revealed,
-      tray: state.tray.slice(0, -1),
-      undosUsed: state.undosUsed + 1,
-      undoRemaining: nextUndoRemaining,
-      phase: state.phase === "paused" ? "paused" : state.phase,
-      hintTile: null,
-      lastMessage: "Undo restored the tile and hid the grid cell.",
-      lastConflicts: [],
-      tutorialStep,
-      tutorialHintUsed: false,
+      trayTokens,
+      tray: trayTokens,
+      selectedToken: trayTokens.length ? { source: "tray", index: 0 } : null,
+      legalCells: trayTokens.length ? legalCellsForValue(s.revealed, trayTokens[0]) : [],
+      history,
+      undoRemaining: s.undoRemaining - 1,
+      undosUsed: s.undosUsed + 1,
+      phase: "playing",
+      pendingPairTile: null,
     });
-
     return true;
   },
 
   useHint: () => {
-    const state = get();
-    if (!state.solverContext) return null;
-    if (state.hintsRemaining <= 0) return null;
-    if (state.phase === "tutorial" && state.tutorialStep < 6) {
-      set({ lastMessage: "Hints come later in the tutorial." });
-      return null;
+    const s = get();
+    if (!s.solverContext) return null;
+    const hasPairs = hasAnyRemovablePair(s.tiles, s.present, s.solverContext.adjacency);
+    if (!hasPairs) return null;
+    for (let i = 0; i < s.tiles.length; i += 1) {
+      if (!s.present[i]) continue;
+      set({
+        hintTile: i,
+        hintsUsed: s.hintsUsed + 1,
+        lastMessage: "Hint: start with highlighted open tile.",
+      });
+      return i;
     }
-    const hintIndex = getHintMove(state.solverContext, state);
-    if (hintIndex === null) return null;
-
-    let tutorialStep = state.tutorialStep;
-    if (state.phase === "tutorial" && tutorialStep === 6) {
-      tutorialStep = 6;
-    }
-
-    set({
-      hintTile: hintIndex,
-      hintsRemaining: state.hintsRemaining - 1,
-      hintsUsed: state.hintsUsed + 1,
-      tutorialStep,
-      tutorialHintUsed:
-        state.phase === "tutorial" && state.tutorialStep === 6 ? true : state.tutorialHintUsed,
-      lastMessage: state.phase === "tutorial" ? "Hint active: remove the highlighted tile." : null,
-    });
-
-    return hintIndex;
+    return null;
   },
 
   clearHint: () => set({ hintTile: null }),
-
   clearMessage: () => set({ lastMessage: null }),
 }));
+
+function evaluateState() {
+  const s = useGameStore.getState();
+  if (!s.solverContext) return;
+
+  const completeGrid = s.revealed.every((row) => row.every((value) => value !== null));
+  const allTilesRemoved = s.present.every((value) => !value);
+  if (completeGrid && allTilesRemoved) {
+    useGameStore.setState({ phase: "win" });
+    finalizeWin(useGameStore.getState());
+    return;
+  }
+
+  const stuck = isStuckState({
+    tiles: s.tiles,
+    present: s.present,
+    adjacency: s.solverContext.adjacency,
+    grid: s.revealed,
+    tokens: s.trayTokens,
+    bufferCapacity: s.trayLimit,
+  });
+
+  if (!stuck) {
+    if (s.phase === "stuck") useGameStore.setState({ phase: "playing" });
+    return;
+  }
+
+  if (s.undoRemaining > 0) {
+    useGameStore.setState({ phase: "stuck", lastMessage: "Stuck: no legal moves. Use Undo." });
+    return;
+  }
+
+  const nextLives = s.lives - 1;
+  useGameStore.setState({
+    lives: nextLives,
+    phase: nextLives <= 0 ? "fail" : "playing",
+    lastMessage: nextLives <= 0 ? "No lives left. Level failed." : "Lost a life from deadlock.",
+  });
+}
 
 function finalizeWin(state: GameState) {
   if (state.seed === null) return;
   const progress = getProgress();
   const key = `${state.difficulty}:${state.seed}`;
   const timeMs = state.timeSeconds * 1000;
-  const moves = state.moves;
-
-  const currentBestTime = progress.bestTimesMs[key];
-  const currentBestMoves = progress.bestMoves[key];
-
-  const bestTimesMs =
-    currentBestTime === undefined || timeMs < currentBestTime ? { [key]: timeMs } : {};
-  const bestMoves =
-    currentBestMoves === undefined || moves < currentBestMoves ? { [key]: moves } : {};
-
   updateProgress({
     totalWins: progress.totalWins + 1,
-    bestTimesMs,
-    bestMoves,
+    bestTimesMs:
+      progress.bestTimesMs[key] === undefined || timeMs < progress.bestTimesMs[key]
+        ? { [key]: timeMs }
+        : {},
+    bestMoves:
+      progress.bestMoves[key] === undefined || state.moves < progress.bestMoves[key]
+        ? { [key]: state.moves }
+        : {},
     highestLevelUnlocked: {
       ...progress.highestLevelUnlocked,
       [state.difficulty]: Math.max(
@@ -536,44 +447,4 @@ function finalizeWin(state: GameState) {
       ),
     },
   });
-}
-
-function describeConflict(
-  revealed: SolverState["revealed"],
-  row: number,
-  col: number,
-  value: number,
-) {
-  if (revealed[row][col] !== null) {
-    return "Illegal reveal: that cell is already revealed.";
-  }
-  const rowConflict = revealed[row].some((cell, index) => index !== col && cell === value);
-  const colConflict = revealed.some((cells, index) => index !== row && cells[col] === value);
-  const boxRow = Math.floor(row / 3) * 3;
-  const boxCol = Math.floor(col / 3) * 3;
-  let boxConflict = false;
-  for (let r = boxRow; r < boxRow + 3; r += 1) {
-    for (let c = boxCol; c < boxCol + 3; c += 1) {
-      if (r === row && c === col) continue;
-      if (revealed[r][c] === value) {
-        boxConflict = true;
-        break;
-      }
-    }
-    if (boxConflict) break;
-  }
-  const parts = [];
-  if (rowConflict) parts.push("row");
-  if (colConflict) parts.push("column");
-  if (boxConflict) parts.push("box");
-  if (parts.length === 0) {
-    return "Illegal reveal.";
-  }
-  if (parts.length === 1) {
-    return `Illegal reveal: duplicates ${value} in this ${parts[0]}.`;
-  }
-  if (parts.length === 2) {
-    return `Illegal reveal: duplicates ${value} in this ${parts[0]} and ${parts[1]}.`;
-  }
-  return `Illegal reveal: duplicates ${value} in this row, column, and box.`;
 }
