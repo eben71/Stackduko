@@ -1,84 +1,143 @@
-// Simple Sudoku Generator and Solver
-// Using backtracking algorithm
+import { mulberry32, shuffle } from "@/logic/rng";
+import { generateSolvedGrid } from "@/logic/sudoku/generator";
 
-export const BLANK = 0;
+export type Difficulty = "easy" | "medium" | "hard";
+export type SudokuGrid = number[][];
 
-export function isValid(board: number[][], row: number, col: number, num: number): boolean {
-  // Check row
-  for (let x = 0; x < 9; x++) {
-    if (board[row][x] === num) return false;
+export type GeneratedPuzzle = {
+  seed: number;
+  difficulty: Difficulty;
+  solution: SudokuGrid;
+  puzzle: Array<Array<number | null>>;
+  givens: Array<Array<boolean>>;
+  givenCountsByDigit: Record<number, number>;
+};
+
+const TARGET_GIVENS: Record<Difficulty, number> = {
+  easy: 63,
+  medium: 55,
+  hard: 47,
+};
+
+export function generatePrefilledSudoku(seed: number, difficulty: Difficulty): GeneratedPuzzle {
+  let localSeed = seed;
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const rng = mulberry32(localSeed);
+    const solution = generateSolvedGrid(rng);
+    const givenCounts = buildOddGivenCounts(TARGET_GIVENS[difficulty], rng);
+    const puzzle = buildPuzzleFromCounts(solution, givenCounts, rng);
+    if (hasUniqueSolution(puzzle)) {
+      return {
+        seed: localSeed,
+        difficulty,
+        solution,
+        puzzle,
+        givens: puzzle.map((row) => row.map((v) => v !== null)),
+        givenCountsByDigit: countDigitsInPuzzle(puzzle),
+      };
+    }
+    localSeed += 1;
   }
+  throw new Error("Failed to generate unique pair-and-place Sudoku.");
+}
 
-  // Check col
-  for (let x = 0; x < 9; x++) {
-    if (board[x][col] === num) return false;
+function buildOddGivenCounts(target: number, rng: () => number): Record<number, number> {
+  const counts: Record<number, number> = Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [i + 1, 1]),
+  ) as Record<number, number>;
+
+  let remaining = target - 9;
+  while (remaining > 0) {
+    const digit = Math.floor(rng() * 9) + 1;
+    if (counts[digit] <= 7) {
+      counts[digit] += 2;
+      remaining -= 2;
+    }
   }
+  return counts;
+}
 
-  // Check 3x3 box
-  const startRow = row - (row % 3);
-  const startCol = col - (col % 3);
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      if (board[i + startRow][j + startCol] === num) return false;
+function buildPuzzleFromCounts(
+  solution: SudokuGrid,
+  countsByDigit: Record<number, number>,
+  rng: () => number,
+): Array<Array<number | null>> {
+  const puzzle: Array<Array<number | null>> = Array.from({ length: 9 }, () => Array(9).fill(null));
+  const positionsByDigit = new Map<number, Array<{ row: number; col: number }>>();
+
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      const digit = solution[row][col];
+      const list = positionsByDigit.get(digit) ?? [];
+      list.push({ row, col });
+      positionsByDigit.set(digit, list);
     }
   }
 
+  for (let digit = 1; digit <= 9; digit += 1) {
+    const positions = shuffle(rng, positionsByDigit.get(digit) ?? []);
+    const take = countsByDigit[digit];
+    for (let i = 0; i < take; i += 1) {
+      const pos = positions[i];
+      puzzle[pos.row][pos.col] = digit;
+    }
+  }
+
+  return puzzle;
+}
+
+export function hasUniqueSolution(puzzle: Array<Array<number | null>>): boolean {
+  const board = puzzle.map((row) => row.map((v) => v ?? 0));
+  return countSolutions(board, 2) === 1;
+}
+
+function countSolutions(board: SudokuGrid, limit: number): number {
+  const next = findEmpty(board);
+  if (!next) return 1;
+  const [row, col] = next;
+  let count = 0;
+  for (let value = 1; value <= 9; value += 1) {
+    if (!isLegal(board, row, col, value)) continue;
+    board[row][col] = value;
+    count += countSolutions(board, limit - count);
+    board[row][col] = 0;
+    if (count >= limit) return count;
+  }
+  return count;
+}
+
+function findEmpty(board: SudokuGrid): [number, number] | null {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (board[row][col] === 0) return [row, col];
+    }
+  }
+  return null;
+}
+
+function isLegal(board: SudokuGrid, row: number, col: number, value: number): boolean {
+  for (let i = 0; i < 9; i += 1) {
+    if (board[row][i] === value || board[i][col] === value) return false;
+  }
+  const boxRow = Math.floor(row / 3) * 3;
+  const boxCol = Math.floor(col / 3) * 3;
+  for (let r = boxRow; r < boxRow + 3; r += 1) {
+    for (let c = boxCol; c < boxCol + 3; c += 1) {
+      if (board[r][c] === value) return false;
+    }
+  }
   return true;
 }
 
-export function solveSudoku(board: number[][]): boolean {
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      if (board[row][col] === BLANK) {
-        for (let num = 1; num <= 9; num++) {
-          if (isValid(board, row, col, num)) {
-            board[row][col] = num;
-            if (solveSudoku(board)) return true;
-            board[row][col] = BLANK;
-          }
-        }
-        return false;
-      }
+export function countDigitsInPuzzle(puzzle: Array<Array<number | null>>): Record<number, number> {
+  const counts: Record<number, number> = Object.fromEntries(
+    Array.from({ length: 9 }, (_, i) => [i + 1, 0]),
+  ) as Record<number, number>;
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      const value = puzzle[row][col];
+      if (value) counts[value] += 1;
     }
   }
-  return true;
-}
-
-export function generateSudoku(difficulty: "easy" | "medium" | "hard" = "medium"): number[][] {
-  void difficulty;
-  // 1. Start with empty board
-  const board = Array(9)
-    .fill(null)
-    .map(() => Array(9).fill(BLANK));
-
-  // 2. Fill diagonal boxes (independent, valid) to ensure randomness
-  for (let i = 0; i < 9; i = i + 3) {
-    fillBox(board, i, i);
-  }
-
-  // 3. Solve the rest to get a complete valid board
-  solveSudoku(board);
-
-  return board;
-}
-
-function fillBox(board: number[][], row: number, col: number) {
-  let num: number;
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      do {
-        num = Math.floor(Math.random() * 9) + 1;
-      } while (!isSafeInBox(board, row, col, num));
-      board[row + i][col + j] = num;
-    }
-  }
-}
-
-function isSafeInBox(board: number[][], rowStart: number, colStart: number, num: number): boolean {
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      if (board[rowStart + i][colStart + j] === num) return false;
-    }
-  }
-  return true;
+  return counts;
 }

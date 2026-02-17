@@ -16,24 +16,10 @@ describe("gameStore branches", () => {
     expect(useGameStore.getState().phase).toBe("tutorial");
   });
 
-  it("illegal placement costs life", () => {
-    useGameStore.getState().startGame("easy", 1, 4444);
-    useGameStore.setState({
-      handTokens: [1],
-      selectedToken: { source: "hand", index: 0 },
-      revealed: Array.from({ length: 9 }, () => Array(9).fill(null)),
-      barrierMap: { "0,0": 2 },
-    });
-    const before = useGameStore.getState().lives;
-    const result = useGameStore.getState().placeSelectedToken(0, 0);
-    expect(result.ok).toBe(false);
-    expect(useGameStore.getState().lives).toBe(before - 1);
-  });
-
-  it("selectToken updates legal highlights", () => {
+  it("selectToken updates legal highlights from token buffer", () => {
     useGameStore.getState().startGame("easy", 1, 5555);
-    useGameStore.setState({ handTokens: [1], selectedToken: null });
-    useGameStore.getState().selectToken("hand", 0);
+    useGameStore.setState({ trayTokens: [1], selectedToken: null });
+    useGameStore.getState().selectToken("tray", 0);
     expect(useGameStore.getState().legalCells.length).toBeGreaterThan(0);
   });
 });

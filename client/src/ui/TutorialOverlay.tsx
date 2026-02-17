@@ -1,23 +1,25 @@
 import React from "react";
 import type { GameState } from "@/store/gameStore";
 
+const steps = [
+  "The Sudoku starts prefilled. Finish all empty cells to win.",
+  "Remove Mahjong-style pairs: both tiles must be open and match.",
+  "Each removed pair adds 2 tokens to the Token Buffer (capacity 5).",
+  "Select a token to highlight legal cells, then place it without breaking Sudoku rules.",
+  "If you are stuck, use up to 3 undos. Without undos, stuck states cost a life (3 lives total).",
+];
+
 export function TutorialOverlay({
   state,
   onFinish,
   onAdvance,
+  onBack,
 }: {
   state: GameState;
   onFinish: () => void;
   onAdvance: () => void;
+  onBack: () => void;
 }) {
-  const steps = [
-    "Remove two open matching tiles to create tokens.",
-    "Select a token from Hand and place it on a legal Sudoku cell.",
-    "Use Token Buffer (max 5) to delay placement.",
-    "Blocked barrier cells appear after each completed pair and expire in 2 turns.",
-    "You have 3 lives and 3 undos.",
-    "Finish by filling the grid.",
-  ];
   const step = Math.min(state.tutorialStep, steps.length - 1);
   return (
     <div className="tutorial-overlay">
@@ -28,12 +30,14 @@ export function TutorialOverlay({
         </div>
         <div className="tutorial-body">{steps[step]}</div>
         <div className="tutorial-actions">
-          {step < steps.length - 1 && (
+          <button className="menu-secondary" onClick={onBack} disabled={step === 0}>
+            Back
+          </button>
+          {step < steps.length - 1 ? (
             <button className="menu-primary" onClick={onAdvance}>
               Next
             </button>
-          )}
-          {step === steps.length - 1 && (
+          ) : (
             <button className="menu-primary" onClick={onFinish}>
               Finish Tutorial
             </button>

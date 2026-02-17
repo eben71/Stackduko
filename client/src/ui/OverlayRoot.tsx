@@ -135,6 +135,7 @@ export function OverlayRoot() {
         phase === "paused" ||
         phase === "win" ||
         phase === "stuck" ||
+        phase === "fail" ||
         phase === "tutorial") && (
         <Hud
           state={gameState}
@@ -171,7 +172,7 @@ export function OverlayRoot() {
         />
       )}
 
-      {phase === "stuck" && (
+      {(phase === "stuck" || phase === "fail") && (
         <StuckModal
           state={gameState}
           onUndo={() => undoMove()}
@@ -182,7 +183,14 @@ export function OverlayRoot() {
       )}
 
       {phase === "tutorial" && (
-        <TutorialOverlay state={gameState} onFinish={finishTutorial} onAdvance={advanceTutorial} />
+        <TutorialOverlay
+          state={gameState}
+          onFinish={finishTutorial}
+          onAdvance={advanceTutorial}
+          onBack={() =>
+            useGameStore.setState((s) => ({ tutorialStep: Math.max(0, s.tutorialStep - 1) }))
+          }
+        />
       )}
 
       {gameState.lastMessage && settings.tutorialTips && (
@@ -207,7 +215,7 @@ function BootScreen() {
     <div className="overlay-screen overlay-boot">
       <div className="boot-card">
         <div className="boot-logo">Stackdoku</div>
-        <div className="boot-subtitle">Reveal and Resolve</div>
+        <div className="boot-subtitle">Pair & Place</div>
         <div className="boot-bar">
           <div className="boot-bar-fill" />
         </div>
@@ -237,7 +245,7 @@ function MainMenu({
     <div className="overlay-screen menu-screen">
       <div className="menu-card">
         <div className="menu-title">Stackdoku</div>
-        <div className="menu-subtitle">Reveal the numbers. Resolve the Sudoku.</div>
+        <div className="menu-subtitle">Remove pairs. Place tokens. Complete Sudoku.</div>
         <div className="menu-actions">
           {canContinue && (
             <button className="menu-primary" onClick={onContinue}>
@@ -363,19 +371,6 @@ function Hud({
 
       <div className="hud-bottom">
         <div className="tray">
-          <div className="tray-label">Hand</div>
-          <div className="tray-items">
-            {state.handTokens.length === 0 && <div className="tray-empty">No active tokens.</div>}
-            {state.handTokens.map((value, idx) => (
-              <button
-                key={`h-${idx}`}
-                className="tray-tile"
-                onClick={() => useGameStore.getState().selectToken("hand", idx)}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
           <div className="tray-label">Token Buffer</div>
           <div className="tray-items">
             {state.trayTokens.length === 0 && <div className="tray-empty">Empty</div>}
@@ -394,19 +389,8 @@ function Hud({
           <button className="hud-action" onClick={onUndo} disabled={undoDisabled}>
             Undo
           </button>
-          <button
-            className="hud-action"
-            onClick={() => useGameStore.getState().moveSelectedTokenToTray()}
-            disabled={
-              !state.selectedToken ||
-              state.selectedToken.source !== "hand" ||
-              state.trayTokens.length >= state.trayLimit
-            }
-          >
-            To Buffer
-          </button>
           <button className="hud-action" onClick={onHint} disabled={hintDisabled}>
-            Hint Pair
+            Remove Pair Hint
           </button>
           <button className="hud-action" onClick={onRestart}>
             Restart
@@ -514,13 +498,13 @@ function StuckModal({
   return (
     <div className="overlay-modal">
       <div className="modal-card">
-        <div className="modal-title">No legal actions</div>
+        <div className="modal-title">Stuck / No legal moves</div>
         <div className="modal-actions">
           <button className="menu-secondary" onClick={onUndo} disabled={undoDisabled}>
             Undo
           </button>
           <button className="menu-secondary" onClick={onHint} disabled={hintDisabled}>
-            Hint Pair
+            Remove Pair Hint
           </button>
           <button className="menu-secondary" onClick={onRestart}>
             Restart

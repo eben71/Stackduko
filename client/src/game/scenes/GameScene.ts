@@ -3,7 +3,7 @@ import { getSettings, type Settings } from "@/game/state/storage";
 import { BoardRenderer } from "@/game/rendering/BoardRenderer";
 import { TileSprite } from "@/game/rendering/TileSprite";
 import { useGameStore } from "@/store/gameStore";
-import { isTileFree } from "@/logic/solver/solver";
+import { isFreeTile } from "@/logic/stack/freeTile";
 
 const TILE_SIZE = 60;
 const ISO_OFFSET_X = -6;
@@ -233,7 +233,7 @@ export class GameScene extends Phaser.Scene {
   private showRevealTooltip(tileSprite: TileSprite) {
     const state = useGameStore.getState();
     if (!state.solverContext) return;
-    const isFree = isTileFree(state.solverContext, state, tileSprite.index);
+    const isFree = isFreeTile(tileSprite.index, state.present, state.solverContext.adjacency);
     if (!isFree) return;
 
     const tile = tileSprite.tile;
@@ -284,7 +284,7 @@ export class GameScene extends Phaser.Scene {
 
     this.tiles.forEach((tileSprite, index) => {
       if (!state.present[index]) return;
-      const isFree = isTileFree(context, state, index);
+      const isFree = isFreeTile(index, state.present, context.adjacency);
       const isHint = state.hintTile === index;
       tileSprite.setHighlight(isHint ? "hint" : isFree ? "free" : "none");
       tileSprite.setNumberVisible(this.settings.tileNumbersVisible);

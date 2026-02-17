@@ -109,7 +109,7 @@ export function shufflePositions(rng: Rng, positions: TilePosition[]): TilePosit
 }
 
 export function validateTemplate(template: LayoutTemplate): boolean {
-  if (template.positions.length !== 81) return false;
+  if (template.positions.length < 40 || template.positions.length > 81) return false;
   const seen = new Set<string>();
   for (const pos of template.positions) {
     const key = `${pos.x},${pos.y},${pos.z}`;

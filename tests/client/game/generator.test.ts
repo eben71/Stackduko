@@ -1,24 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "../../../client/src/logic/rng";
-import { generateSolvedGrid } from "../../../client/src/logic/sudoku/generator";
-import { isPlacementLegal, isValidSolution } from "../../../client/src/logic/sudoku/validate";
+import {
+  generatePrefilledSudoku,
+  hasUniqueSolution,
+} from "../../../client/src/game/logic/sudoku/generator";
 
-describe("Sudoku generator", () => {
-  it("generates a valid solved board", () => {
-    const rng = mulberry32(42);
-    const board = generateSolvedGrid(rng);
-    expect(isValidSolution(board)).toBe(true);
+describe("prefilled sudoku generator", () => {
+  it("enforces odd given parity per digit", () => {
+    const generated = generatePrefilledSudoku(2026, "medium");
+    Object.values(generated.givenCountsByDigit).forEach((count) => {
+      expect(count % 2).toBe(1);
+    });
   });
-});
 
-describe("Sudoku placement validation", () => {
-  it("rejects duplicates in row, col, box", () => {
-    const board = Array(9)
-      .fill(null)
-      .map(() => Array(9).fill(0));
-    board[0][0] = 5;
-    board[1][1] = 5;
-    expect(isPlacementLegal(board, 0, 2, 5)).toBe(false);
-    expect(isPlacementLegal(board, 2, 0, 5)).toBe(false);
+  it("produces unique-solution puzzle", () => {
+    const generated = generatePrefilledSudoku(3030, "easy");
+    expect(hasUniqueSolution(generated.puzzle)).toBe(true);
   });
 });
