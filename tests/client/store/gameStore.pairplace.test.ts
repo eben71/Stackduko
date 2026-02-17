@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useGameStore } from "../../../client/src/store/gameStore";
-import { createSolverContext } from "../../../client/src/logic/solver/solver";
+import { buildAdjacency } from "../../../client/src/logic/stack/freeTile";
 
 const pairTiles = [
   { id: "a", x: 0, y: 0, z: 0, value: 1 },
@@ -10,20 +10,16 @@ const pairTiles = [
 ];
 
 function primePlayingState() {
-  const context = createSolverContext(pairTiles);
   useGameStore.setState({
     phase: "playing",
     tiles: pairTiles,
     present: [true, true, true, true],
     revealed: Array.from({ length: 9 }, () => Array(9).fill(null)),
-    solverContext: context,
-    handTokens: [],
+    solverContext: { adjacency: buildAdjacency(pairTiles) },
     trayTokens: [],
     tray: [],
     selectedToken: null,
     pendingPairTile: null,
-    pendingPairPlacements: 0,
-    barrierMap: {},
     turn: 0,
     lives: 3,
     undoRemaining: 3,
@@ -40,14 +36,10 @@ describe("pair & place store flows", () => {
     primePlayingState();
   });
 
-  it("handles pair selection, buffer move, placement and undo", () => {
+  it("handles pair selection, placement and undo", () => {
     expect(useGameStore.getState().attemptRemoveTile(0).ok).toBe(true);
     expect(useGameStore.getState().attemptRemoveTile(1).ok).toBe(true);
-    expect(useGameStore.getState().handTokens).toEqual([1, 1]);
-
-    useGameStore.getState().selectToken("hand", 0);
-    expect(useGameStore.getState().moveSelectedTokenToTray().ok).toBe(true);
-    expect(useGameStore.getState().trayTokens.length).toBe(1);
+    expect(useGameStore.getState().trayTokens).toEqual([1, 1]);
 
     useGameStore.getState().selectToken("tray", 0);
     expect(useGameStore.getState().placeSelectedToken(0, 0).ok).toBe(true);
@@ -57,34 +49,10 @@ describe("pair & place store flows", () => {
     expect(useGameStore.getState().revealed[0][0]).toBeNull();
   });
 
-  it("penalizes mismatch pair and illegal placements", () => {
+  it("blocks mismatched pair", () => {
     useGameStore.getState().attemptRemoveTile(0);
     const mismatch = useGameStore.getState().attemptRemoveTile(2);
     expect(mismatch.ok).toBe(false);
-    expect(useGameStore.getState().lives).toBe(2);
-
-    useGameStore.setState({
-      handTokens: [1],
-      selectedToken: { source: "hand", index: 0 },
-      barrierMap: { "0,0": 2 },
-    });
-    const illegal = useGameStore.getState().placeSelectedToken(0, 0);
-    expect(illegal.ok).toBe(false);
-    expect(useGameStore.getState().lives).toBe(1);
-  });
-
-  it("supports hint, tutorial controls, pause flow and clear actions", () => {
-    expect(useGameStore.getState().useHint()).not.toBeNull();
-    useGameStore.getState().clearHint();
-    useGameStore.getState().clearMessage();
-
-    useGameStore.getState().startTutorial();
-    expect(useGameStore.getState().phase).toBe("tutorial");
-    useGameStore.getState().advanceTutorial();
-    useGameStore.getState().pauseGame();
-    expect(useGameStore.getState().phase).toBe("paused");
-    useGameStore.getState().resumeGame();
-    useGameStore.getState().quitToMenu();
-    expect(useGameStore.getState().phase).toBe("menu");
+    expect(mismatch.reason).toBe("mismatch");
   });
 });
