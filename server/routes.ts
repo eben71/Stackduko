@@ -2,7 +2,6 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { z } from "zod";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   // Users
@@ -44,19 +43,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post(api.scores.create.path, async (req, res) => {
-    try {
-      const input = api.scores.create.input.parse(req.body);
-      const score = await storage.createScore(input);
-      res.status(201).json(score);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join("."),
-        });
-      }
-      throw err;
+    const parsed = api.scores.create.input.safeParse(req.body);
+    if (!parsed.success) {
+      const [firstIssue] = parsed.error.issues;
+      return res.status(400).json({
+        message: firstIssue?.message ?? "Invalid request",
+        field: firstIssue?.path.join(".") ?? "",
+      });
     }
+
+    const score = await storage.createScore(parsed.data);
+    res.status(201).json(score);
   });
 
   await seedDatabase();
