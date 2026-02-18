@@ -50,9 +50,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(201).json(score);
     } catch (err) {
       if (err instanceof z.ZodError) {
+        const [firstIssue] = err.issues;
         return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join("."),
+          message: firstIssue?.message ?? "Invalid request",
+          field: firstIssue?.path.join(".") ?? "",
         });
       }
       throw err;
