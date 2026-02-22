@@ -106,7 +106,9 @@ export function SettingsOverlay({
         <div className="settings-header">
           <div>
             <h2 id="settings-title">Settings</h2>
-            <p className="settings-subtitle">Changes save automatically.</p>
+            <p className="settings-subtitle">
+              Changes save automatically. Open Help from Pause to review rules anytime.
+            </p>
           </div>
           <button
             className="settings-close"

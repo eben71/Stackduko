@@ -1,49 +1,38 @@
-# Stackdoku Roadmap
+# Stackdoku Roadmap (Pre-Launch)
 
-## Completed in this update (Pair & Place core)
+## Completed
 
-- Replaced Reveal & Resolve with the **Pair & Place** core loop.
-- Added deterministic prefilled Sudoku generation by difficulty.
-- Enforced odd given-count parity for each digit (1-9) to guarantee even missing counts.
-- Added uniqueness checks for generated Sudoku puzzles.
-- Updated level generation so the 3D stack uses **missing digits only**.
-- Implemented pair removal validation (open + matching tiles only).
-- Implemented **Token Buffer** mechanics with capacity = 5.
-- Implemented legal Sudoku placement and live legal-cell highlighting.
-- Implemented stuck detection, lives, undo behavior, fail, and victory transitions.
-- Added/updated Pair & Place tutorial/help overlays and HUD terminology.
-- Added unit tests for parity generation, pair removal, placement legality, token buffer limits, and stuck/undo behavior.
+- Level generator and solver foundations are in place (including solvability-focused logic).
+- Tutorial screen/overlay scaffold exists in the game UI.
+- Mahjong free-tile rule logic is implemented and tested.
+- Basic UI overlays are implemented (HUD, pause, help, settings, win/fail states).
+- Local state management exists for settings and progress/score tracking.
 
-## Remaining launch-critical items
+## Outstanding Before Launch
 
-- Add additional level balancing telemetry for early/mid/late progression.
-- Improve Phaser visual polish (tile depth cues, feedback VFX, and accessibility colors).
-- Add dedicated Victory/Fail scene transitions and SFX hooks.
-- Finalize mobile controls and haptic feedback.
-- Add more integration tests that cover full gameplay loops with seeded snapshots.
+- Polish the full UI/UX experience:
+  - Better animation timing and feedback effects.
+  - Sound design pass (SFX/music balancing and event coverage).
+  - Responsive layout hardening across phone/tablet/desktop.
+- Finalize robust persistence behavior for settings/scores (MVP localStorage or IndexedDB with migration/versioning strategy).
+- Upgrade tutorial/help overlays into production-grade onboarding with clearer legal/illegal move examples.
+- Fully integrate and balance tray, undo, and hint limits across all difficulties.
+- Improve visible vs hidden mode clarity with stronger visual affordances and accessibility support.
+- Strengthen level progression tuning and difficulty ramp validation.
+- Expand automated test coverage for full gameplay loop interactions and seeded regression cases.
+- App-store readiness package:
+  - Icons, splash assets, metadata.
+  - Privacy notes and policy links.
+  - Performance and startup optimization checks.
+- Free vs premium product handling:
+  - Ad-supported free flow.
+  - Paid ad-removal/premium path.
+  - Entitlement and fallback UX.
+- Add privacy-safe analytics/telemetry for funnel and balancing insights.
 
-## Future roadmap
+## Recommended Launch-Plus Work
 
-### Gameplay content
-
-- Daily seeded puzzles.
-- Rotating challenge modifiers.
-- Timed mode + score attack.
-
-### Community & progression
-
-- Local and cloud leaderboards.
-- Profile progression tracks and achievements.
-- Optional puzzle sharing by seed.
-
-### Monetization options
-
-- Free with inter-level ads.
-- Premium no-ads purchase.
-- Optional cosmetic bundles (themes/tiles only).
-
-### Platform + ops
-
-- Cloud sync for progress and settings.
-- Crash analytics and balancing analytics (privacy-safe).
-- Live-ops puzzle rotation tooling.
+- Daily seeded puzzle pipeline and event/challenge framework.
+- Cosmetic progression (themes/skins) with non-pay-to-win boundaries.
+- Cloud sync/profile portability for multi-device continuity.
+- LiveOps hooks for curated puzzle drops and seasonal content.
