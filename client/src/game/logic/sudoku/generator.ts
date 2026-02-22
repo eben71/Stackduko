@@ -13,6 +13,7 @@ export type GeneratedPuzzle = {
   givenCountsByDigit: Record<number, number>;
 };
 
+// RULES.md Section 1: difficulty controls prefilled Sudoku density.
 const TARGET_GIVENS: Record<Difficulty, number> = {
   easy: 63,
   medium: 55,
@@ -42,6 +43,7 @@ export function generatePrefilledSudoku(seed: number, difficulty: Difficulty): G
 }
 
 function buildOddGivenCounts(target: number, rng: () => number): Record<number, number> {
+  // We keep odd given counts per digit so missing counts are even, enabling strict tile pairing later.
   const counts: Record<number, number> = Object.fromEntries(
     Array.from({ length: 9 }, (_, i) => [i + 1, 1]),
   ) as Record<number, number>;

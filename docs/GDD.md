@@ -9,61 +9,81 @@
 - Ads between levels, stub only
 - Premium removes ads, stub only
 
+## Rule Source of Truth
+
+Gameplay rules are centralized in `docs/RULES.md`. Keep this document and the tutorial aligned with that file.
+
 ## Core Loop
 
-- Observe the isometric tile stack
-- Identify free tiles
-- Evaluate Sudoku implications
-- Remove a legal tile
-- Reveal the number in the grid
-- Use undo or hints if needed
-- Win by revealing all 81 cells with no constraint violations
+- Observe the layered tile stack.
+- Identify free matching pairs.
+- Remove a legal pair to earn two identical number tokens.
+- Place tokens into legal Sudoku cells.
+- Manage buffer pressure, lives, and undo budget.
+- Win by legally filling the board and exhausting the stack.
 
 ## Key Concepts
 
-- Each tile maps to a Sudoku cell and carries that solution value
-- Tiles start present and unrevealed
-- Removing a tile reveals and locks its number unless undone
+- Levels use a 9x9 Sudoku board with difficulty-based prefilled counts.
+- The stack corresponds to the board's empty cells.
+- Pair removals produce token placements instead of directly revealing cells.
 
 ## Difficulty Model
 
 - Easy
-- Tile numbers visible default on
-- More hints
-- Simpler stack layouts
+  - More Sudoku prefills
+  - Tile numbers visible default on
+  - Simpler stack pressure
 - Medium
-- Tile numbers visible default off
-- Balanced layouts
+  - Balanced Sudoku prefills
+  - Tile numbers visible default off
 - Hard
-- Tile numbers visible default off
-- Denser layouts
-- Difficulty influences layout weights, hint defaults, and undo limits
+  - Fewer Sudoku prefills
+  - Tile numbers visible default off
+  - Higher planning pressure
 
-## Rules
+## Rules Summary
 
 - Free Tile Rule
-- A tile is removable if no tile exists directly above it at the same x and y
-- A tile is removable if at least one horizontal side is open on its layer
-- Reveal Rule
-- Removing a tile reveals its value in the Sudoku grid
-- Constraint Rule
-- A move is illegal if it creates duplicates in row, column, or box among revealed values
-- Illegal moves are blocked with feedback and highlights
-- Win Condition
-- All tiles removed with no violations
-- Stuck Condition
-- No legal free tiles remain
-- Show a modal with Undo, Hint, Restart, Quit
+  - A tile is removable if no tile exists above and at least one horizontal side is open.
+- Pair Rule
+  - Only matching free tiles can be removed.
+- Token Buffer Rule
+  - Removing a legal pair adds two identical tokens.
+  - Buffer capacity is 5.
+  - If full, player must place tokens before removing more pairs.
+- Placement Rule
+  - Token placement must satisfy Sudoku row, column, and 3x3 box constraints.
+  - Illegal placements are blocked with feedback.
+- Lives and Undo Rule
+  - 3 lives per level.
+  - 3 undos per level.
+  - If stuck and no undos remain, player loses one life.
+- Stuck Rule
+  - No removable pairs, full buffer, and no legal placements.
+  - Prompt undo or restart.
+- Win Rule
+  - All cells filled legally and stack exhausted.
 
 ## Modes
 
-- Visible mode shows numbers on tile faces before removal
-- Hidden mode keeps tiles blank until revealed
-- Toggling mid level only changes rendering
+- Visible mode shows numbers on tile faces before removal.
+- Hidden mode keeps tiles blank until revealed by play.
+- Toggling mid-level changes rendering only.
 
 ## Tray, Undo, Hints
 
-- Tray stores the last N removed tiles
-- If the tray is full, removing another tile is blocked
-- Undo restores the last removed tile and unreveals its cell
-- Hints highlight a legal tile using solver heuristics
+- Tray (token buffer) stores earned tokens with hard capacity 5.
+- Undo restores prior actions up to level limit.
+- Hints point to a likely legal remove-pair move.
+
+## Tutorial Requirements
+
+Tutorial should explicitly teach:
+
+1. Free tile identification.
+2. Matching pair removal.
+3. Buffer capacity and forced placement flow.
+4. Legal Sudoku placement.
+5. Undo and stuck recovery behavior.
+6. Visible vs hidden modes.

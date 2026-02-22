@@ -34,14 +34,16 @@ export function generateLevel(options: LevelOptions): LevelData {
     }
   }
 
-  if (missingDigits.some((digit) => missingDigits.filter((d) => d === digit).length % 2 !== 0)) {
-    throw new Error("Invalid parity: missing digit counts must be even.");
-  }
+  // RULES.md - Tile Setup and Tile Pairs:
+  // the stack must map exactly to the empty Sudoku cells, and all tokens must be pair-removable.
+  // We enforce this by requiring an even count per digit and materializing value pairs.
+  const pairedDigits = buildTokenPairs(missingDigits);
+  // RULES.md Section 1 + 2: there must be one stack tile per empty Sudoku cell.
   if (template.positions.length < missingDigits.length) {
     throw new Error("Layout does not have enough positions for all missing digits.");
   }
 
-  const shuffledDigits = shuffle(rng, missingDigits);
+  const shuffledDigits = shuffle(rng, pairedDigits);
   const positions = shufflePositions(rng, template.positions).slice(0, shuffledDigits.length);
   const tiles: TileSpec[] = positions.map((pos, index) => ({
     id: `tile-${index}`,
@@ -61,4 +63,24 @@ export function generateLevel(options: LevelOptions): LevelData {
     puzzle: puzzleData.puzzle,
     givens: puzzleData.givens,
   };
+}
+
+function buildTokenPairs(missingDigits: number[]): number[] {
+  // RULES.md Section 2: stack values are generated as strict matching pairs.
+  const counts = new Map<number, number>();
+  for (const digit of missingDigits) {
+    counts.set(digit, (counts.get(digit) ?? 0) + 1);
+  }
+
+  const pairedDigits: number[] = [];
+  counts.forEach((count, digit) => {
+    if (count % 2 !== 0) {
+      throw new Error("Invalid parity: missing digit counts must be even.");
+    }
+    for (let i = 0; i < count / 2; i += 1) {
+      pairedDigits.push(digit, digit);
+    }
+  });
+
+  return pairedDigits;
 }

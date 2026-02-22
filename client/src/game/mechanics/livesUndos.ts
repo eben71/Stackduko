@@ -15,6 +15,7 @@ export function isStuckState(params: {
   tokens: number[];
   bufferCapacity: number;
 }) {
+  // RULES.md Section 7: stuck condition is no removable pairs + full buffer + no legal placements.
   const noPairs = !hasAnyRemovablePair(params.tiles, params.present, params.adjacency);
   const fullBuffer = params.tokens.length >= params.bufferCapacity;
   const noPlacement = !hasAnyLegalPlacement(params.grid, params.tokens);

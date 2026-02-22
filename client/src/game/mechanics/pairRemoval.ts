@@ -8,9 +8,11 @@ export function isRemovablePair(
   first: number,
   second: number,
 ) {
+  // RULES.md Section 3 + 4: a legal removal requires two distinct, present, free tiles.
   if (first === second || !present[first] || !present[second]) return false;
   if (!isFreeTile(first, present, adjacency) || !isFreeTile(second, present, adjacency))
     return false;
+  // RULES.md Section 2: removals must be matching-value pairs.
   return tiles[first].value === tiles[second].value;
 }
 
