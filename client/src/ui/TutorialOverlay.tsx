@@ -2,11 +2,12 @@ import React from "react";
 import type { GameState } from "@/store/gameStore";
 
 const steps = [
-  "The Sudoku starts prefilled. Finish all empty cells to win.",
-  "Remove Mahjong-style pairs: both tiles must be open and match.",
-  "Each removed pair adds 2 tokens to the Token Buffer (capacity 5).",
-  "Select a token to highlight legal cells, then place it without breaking Sudoku rules.",
-  "If you are stuck, use up to 3 undos. Without undos, stuck states cost a life (3 lives total).",
+  "Goal: reveal legal moves in the stack and resolve the Sudoku. Fill every empty cell correctly to win.",
+  "Remove only legal pairs: both tiles must be open (no tile above + one side free) and values must match.",
+  "Each legal pair adds 2 tokens to your tray (capacity 5). If full, place tokens before removing more pairs.",
+  "Place tokens only in legal Sudoku cells. A value is illegal if it repeats in the same row, column, or 3×3 box.",
+  "Use Remove Pair Hint for guidance and Undo to recover mistakes. If no recovery is left in a stuck state, you lose a life.",
+  "Visible mode shows tile numbers. Hidden mode conceals them for higher difficulty. You can change this in Settings.",
 ];
 
 export function TutorialOverlay({
@@ -24,7 +25,7 @@ export function TutorialOverlay({
   return (
     <div className="tutorial-overlay">
       <div className="tutorial-card tutorial-guided" role="dialog" aria-live="polite">
-        <div className="tutorial-title">Pair &amp; Place Tutorial</div>
+        <div className="tutorial-title">Stackdoku Tutorial</div>
         <div className="tutorial-step">
           Step {step + 1} of {steps.length}
         </div>
