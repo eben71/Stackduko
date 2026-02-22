@@ -2,13 +2,13 @@ import React from "react";
 import type { GameState } from "@/store/gameStore";
 
 const steps = [
-  "Goal: complete the 9x9 Sudoku and exhaust the stack. Difficulty changes how many cells are prefilled.",
-  "Remove only legal pairs: both tiles must be open (no tile above and one horizontal side free) and values must match.",
-  "Each legal pair adds 2 identical tokens to your buffer (capacity 5). If full, place tokens before removing more pairs.",
-  "Select a token to highlight legal cells. Placement is blocked if the value repeats in its row, column, or 3x3 box.",
-  "You have 3 undos and 3 lives per level. If you are stuck with no undos left, you lose one life.",
-  "Stuck means no removable pairs, full buffer, and no legal placements. Use Undo or Restart to recover.",
-  "Visible mode shows tile numbers and hidden mode conceals them. Change this in Settings.",
+  "Goal: complete the 9x9 Sudoku and exhaust the tile stack. This loop is Reveal & Resolve, also called Pair & Place.",
+  "Find free tiles first: a tile is free only when nothing is on top and at least one horizontal side is open.",
+  "Remove only matching free tiles as a pair. Illegal attempts include blocked tiles, covered tiles, or mismatched values.",
+  "Each legal pair adds 2 identical tokens to your buffer. Buffer capacity is 5, so if it fills up you must place tokens before removing more pairs.",
+  "Select a token to highlight legal Sudoku cells. You can place only where the value does not repeat in the row, column, or 3x3 box.",
+  "You have 3 undos and 3 lives per level. Use undo to recover from bad sequences or deadlocks before you lose a life.",
+  "Stuck means no removable pairs, a full buffer, and no legal placements. Visible mode shows tile numbers; hidden mode conceals them.",
 ];
 
 export function TutorialOverlay({

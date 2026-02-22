@@ -11,7 +11,7 @@
 
 ## Rule Source of Truth
 
-Gameplay rules are centralized in `docs/RULES.md`. Keep this document and the tutorial aligned with that file.
+Gameplay rules are centralized in `docs/RULES.md`. Keep this document, README, and tutorial/help overlays aligned with that file.
 
 ## Core Loop
 
@@ -25,7 +25,7 @@ Gameplay rules are centralized in `docs/RULES.md`. Keep this document and the tu
 ## Key Concepts
 
 - Levels use a 9x9 Sudoku board with difficulty-based prefilled counts.
-- The stack corresponds to the board's empty cells.
+- The stack is generated to map to empty-cell requirements.
 - Pair removals produce token placements instead of directly revealing cells.
 
 ## Difficulty Model
@@ -53,6 +53,7 @@ Gameplay rules are centralized in `docs/RULES.md`. Keep this document and the tu
   - Buffer capacity is 5.
   - If full, player must place tokens before removing more pairs.
 - Placement Rule
+  - Selecting a token highlights legal cells.
   - Token placement must satisfy Sudoku row, column, and 3x3 box constraints.
   - Illegal placements are blocked with feedback.
 - Lives and Undo Rule
@@ -68,13 +69,13 @@ Gameplay rules are centralized in `docs/RULES.md`. Keep this document and the tu
 ## Modes
 
 - Visible mode shows numbers on tile faces before removal.
-- Hidden mode keeps tiles blank until revealed by play.
+- Hidden mode keeps tile values concealed until revealed by play.
 - Toggling mid-level changes rendering only.
 
 ## Tray, Undo, Hints
 
 - Tray (token buffer) stores earned tokens with hard capacity 5.
-- Undo restores prior actions up to level limit.
+- Undo restores prior actions up to the per-level limit.
 - Hints point to a likely legal remove-pair move.
 
 ## Tutorial Requirements
@@ -84,6 +85,6 @@ Tutorial should explicitly teach:
 1. Free tile identification.
 2. Matching pair removal.
 3. Buffer capacity and forced placement flow.
-4. Legal Sudoku placement.
-5. Undo and stuck recovery behavior.
+4. Legal Sudoku placement and legal-cell highlighting.
+5. Undo usage and stuck-state recovery.
 6. Visible vs hidden modes.

@@ -3,10 +3,11 @@
 ## Completed
 
 - Level generator and solver foundations are in place (including solvability-focused logic).
-- Tutorial screen/overlay scaffold exists in the game UI.
+- Tutorial and help overlays are aligned to the current Reveal & Resolve / Pair & Place rule set.
 - Mahjong free-tile rule logic is implemented and tested.
 - Basic UI overlays are implemented (HUD, pause, help, settings, win/fail states).
 - Local state management exists for settings and progress/score tracking.
+- Core rules are now centralized in `docs/RULES.md` with legacy rule notes removed.
 
 ## Outstanding Before Launch
 
@@ -15,8 +16,8 @@
   - Sound design pass (SFX/music balancing and event coverage).
   - Responsive layout hardening across phone/tablet/desktop.
 - Finalize robust persistence behavior for settings/scores (MVP localStorage or IndexedDB with migration/versioning strategy).
-- Upgrade tutorial/help overlays into production-grade onboarding with clearer legal/illegal move examples.
-- Fully integrate and balance tray, undo, and hint limits across all difficulties.
+- Upgrade onboarding from static guidance toward richer interactive examples (especially legal/illegal move contrast).
+- Improve stuck-state UX messaging and recovery affordances for undo, restart, and life-loss transitions.
 - Improve visible vs hidden mode clarity with stronger visual affordances and accessibility support.
 - Strengthen level progression tuning and difficulty ramp validation.
 - Expand automated test coverage for full gameplay loop interactions and seeded regression cases.
@@ -39,7 +40,7 @@
 
 ## Remaining Hybrid Rules Delivery Tasks
 
-- Polish UI for Pair and Place clarity:
+- Polish UI for Pair & Place clarity:
   - Improve stack readability and token-to-grid affordances.
   - Improve feedback for blocked pair removals and illegal placements.
   - Tighten tutorial pacing and readability across devices.

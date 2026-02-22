@@ -47,8 +47,8 @@ export function HelpOverlay({ open, onClose }: HelpOverlayProps) {
             <li>Use Remove Pair Hint to highlight a likely open tile to start from.</li>
             <li>Undo reverses recent actions and can recover deadlocks.</li>
             <li>Stuck = no removable pair + full buffer + no legal token placement.</li>
-            <li>You have a configurable undo limit (default play flow uses 3 per level).</li>
-            <li>If no undo is left when stuck, you lose a life (3 lives total).</li>
+            <li>You have 3 undos per level and 3 lives per level.</li>
+            <li>If no undo is left when stuck, you lose one life.</li>
           </ul>
         </div>
 
