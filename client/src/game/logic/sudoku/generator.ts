@@ -15,9 +15,9 @@ export type GeneratedPuzzle = {
 
 // RULES.md Section 1: difficulty controls prefilled Sudoku density.
 const TARGET_GIVENS: Record<Difficulty, number> = {
-  easy: 63,
-  medium: 55,
-  hard: 47,
+  easy: 53,
+  medium: 45,
+  hard: 37,
 };
 
 export function generatePrefilledSudoku(seed: number, difficulty: Difficulty): GeneratedPuzzle {
@@ -39,7 +39,7 @@ export function generatePrefilledSudoku(seed: number, difficulty: Difficulty): G
     }
     localSeed += 1;
   }
-  throw new Error("Failed to generate unique pair-and-place Sudoku.");
+  return generatePrefilledSudoku(localSeed + 1000, difficulty);
 }
 
 function buildOddGivenCounts(target: number, rng: () => number): Record<number, number> {

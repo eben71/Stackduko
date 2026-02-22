@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { type TileSpec } from "@/logic/stack/types";
 import { type Settings } from "@/game/state/storage";
 
-type HighlightMode = "none" | "free" | "hint";
+type HighlightMode = "none" | "free" | "hint" | "pending";
 
 export class TileSprite {
   container: Phaser.GameObjects.Container;
@@ -58,6 +58,15 @@ export class TileSprite {
 
     if (mode === "free") {
       this.base.setTint(0xc7d2fe);
+    } else if (mode === "pending") {
+      this.base.setTint(0x86efac);
+      this.hintTween = this.base.scene.tweens.add({
+        targets: this.container,
+        scale: 1.05,
+        duration: 400,
+        yoyo: true,
+        repeat: -1,
+      });
     } else if (mode === "hint") {
       this.base.setTint(0xfde68a);
       this.hintTween = this.base.scene.tweens.add({

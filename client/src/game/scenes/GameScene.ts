@@ -214,6 +214,27 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (result.pending) {
+      this.syncFromStore();
+      return;
+    }
+
+    if (result.removedNodes) {
+      const [first, second] = result.removedNodes;
+      const t1 = this.tiles.get(first);
+      const t2 = this.tiles.get(second);
+      const duration = this.getAnimDuration(280);
+
+      t1?.remove(duration, () => {
+        this.tiles.delete(first);
+      });
+      t2?.remove(duration, () => {
+        this.tiles.delete(second);
+        this.syncFromStore();
+      });
+      return;
+    }
+
     const duration = this.getAnimDuration(280);
     tileSprite.remove(duration, () => {
       this.tiles.delete(index);
@@ -285,8 +306,9 @@ export class GameScene extends Phaser.Scene {
     this.tiles.forEach((tileSprite, index) => {
       if (!state.present[index]) return;
       const isFree = isFreeTile(index, state.present, context.adjacency);
+      const isPending = state.pendingPairTile === index;
       const isHint = state.hintTile === index;
-      tileSprite.setHighlight(isHint ? "hint" : isFree ? "free" : "none");
+      tileSprite.setHighlight(isPending ? "pending" : isHint ? "hint" : isFree ? "free" : "none");
       tileSprite.setNumberVisible(this.settings.tileNumbersVisible);
       tileSprite.container.setAlpha(isFree ? 1 : 0.6);
     });
