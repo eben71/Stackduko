@@ -24,38 +24,18 @@ Players must balance two systems:
 
 ## Gameplay Mechanics
 
-### 1) Free tile rule (Mahjong-style)
+Gameplay rules are maintained in one place: `docs/RULES.md`.
 
-A tile is removable only when it is **free/open**:
+Highlights of the current hybrid rules:
 
-- No tile is directly above it.
-- At least one horizontal side is open.
-
-Only two matching, currently free tiles can be removed as a pair.
-
-### 2) Reveal & Resolve loop
-
-- Removing a legal pair grants two number tokens.
-- Tokens go to the tray (buffer).
-- A token can be placed only in an empty Sudoku cell where it is legal for row/column/3×3 box constraints.
-
-### 3) Tray / Undo / Hint systems
-
-- **Tray (Token Buffer):** limited capacity (default gameplay flow uses capped buffer).
-- **Undo:** reverses recent actions up to the configured limit for the level/settings.
-- **Hint:** highlights a likely next stack action (remove-pair guidance).
-
-### 4) Visible vs Hidden tile-number mode
-
-- **Visible mode:** tile numbers are shown directly (typically easier).
-- **Hidden mode:** tile values are concealed until interaction patterns reveal intent (typically harder).
-
-This behavior is configurable via settings and defaults by difficulty.
-
-### 5) Win/Loss conditions
-
-- **Win:** Sudoku is completed legally and the stack is fully resolved.
-- **Loss/fail state:** player reaches repeated deadlocks with no recovery actions available (for example no legal moves and no remaining undos/lives under configured rules).
+- 9x9 Sudoku with difficulty-based prefills (easy has more givens, hard has fewer).
+- Stack tiles are consumed as matching pairs and correspond to remaining empty cells.
+- Free tile rule: no tile on top, and at least one horizontal edge free.
+- Pair removal adds two identical tokens to a buffer with capacity 5.
+- Tokens must be placed legally under Sudoku row/column/box constraints.
+- Players get 3 lives and 3 undos per level.
+- Stuck state is when no pair is removable, the buffer is full, and no legal placement exists.
+- Victory requires both a legal full grid and an exhausted stack.
 
 ## Tech Stack
 
@@ -158,6 +138,7 @@ npm run format:check
 
 ## Additional Docs
 
-- Detailed gameplay rules: `docs/GameRules.md`
+- Detailed gameplay rules (single source of truth): `docs/RULES.md`
+- Legacy design rule notes: `docs/GameRules.md`
 - Design notes: `docs/GDD.md`
 - Launch tracking: `Roadmap.md`

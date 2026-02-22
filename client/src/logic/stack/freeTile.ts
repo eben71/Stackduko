@@ -34,12 +34,14 @@ export function buildAdjacency(tiles: TileSpec[]): TileAdjacency {
 
 export function isFreeTile(index: number, present: boolean[], adjacency: TileAdjacency): boolean {
   if (!present[index]) return false;
+  // RULES.md Section 3: a tile is not free if anything remains above it.
   const above = adjacency.aboveIndices[index];
   for (const aboveIndex of above) {
     if (present[aboveIndex]) return false;
   }
   const left = adjacency.leftIndex[index];
   const right = adjacency.rightIndex[index];
+  // RULES.md Section 3: at least one horizontal side must be open.
   const leftBlocked = left !== null && present[left];
   const rightBlocked = right !== null && present[right];
   return !(leftBlocked && rightBlocked);

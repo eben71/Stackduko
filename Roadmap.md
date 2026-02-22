@@ -36,3 +36,20 @@
 - Cosmetic progression (themes/skins) with non-pay-to-win boundaries.
 - Cloud sync/profile portability for multi-device continuity.
 - LiveOps hooks for curated puzzle drops and seasonal content.
+
+## Remaining Hybrid Rules Delivery Tasks
+
+- Polish UI for Pair and Place clarity:
+  - Improve stack readability and token-to-grid affordances.
+  - Improve feedback for blocked pair removals and illegal placements.
+  - Tighten tutorial pacing and readability across devices.
+- Store settings and scores locally with robust migration/version handling.
+- Final bug-fix pass on stuck-state, undo/life transitions, and tutorial step progression.
+- App-store readiness:
+  - Performance and startup polish.
+  - Store metadata, screenshots, and compliance checks.
+  - Privacy and accessibility verification.
+- Future premium mode:
+  - Define free vs premium entitlements.
+  - Integrate ad-removal flow and fallback UX.
+  - Validate monetization behavior does not alter core puzzle fairness.

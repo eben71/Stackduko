@@ -10,3 +10,7 @@
 - Avoid new dependencies unless justified and approved.
 - Keep UI polished, responsive, and accessible.
 - Avoid m-dashes in any text output.
+
+## Quality Gates
+
+- Documentation sync is a quality gate. Any rule or behavior change must update `docs/RULES.md`, `README.md`, `docs/GDD.md`, and tutorial text in `client/src/ui/TutorialOverlay.tsx` in the same change.

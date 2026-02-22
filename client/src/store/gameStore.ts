@@ -121,6 +121,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   trayLimit: TOKEN_BUFFER_CAPACITY,
   selectedToken: null,
   pendingPairTile: null,
+  // RULES.md Section 6: per-level defaults are 3 lives and 3 undos.
   lives: 3,
   undoRemaining: 3,
   moves: 0,
@@ -198,7 +199,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     updateProgress({ tutorialCompleted: true });
     set({ phase: "menu", tutorialStep: 0 });
   },
-  advanceTutorial: () => set((s) => ({ tutorialStep: Math.min(4, s.tutorialStep + 1) })),
+  advanceTutorial: () => set((s) => ({ tutorialStep: Math.min(6, s.tutorialStep + 1) })),
   setPhase: (phase) => set({ phase }),
   pauseGame: () => set((state) => ({ phase: "paused", pausedFrom: state.phase })),
   resumeGame: () => set((state) => ({ phase: state.pausedFrom ?? "playing", pausedFrom: null })),
@@ -214,6 +215,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (s.phase !== "playing" && s.phase !== "tutorial")
       return { ok: false, reason: "not-playing" };
     if (!s.solverContext || !s.present[index]) return { ok: false, reason: "not-free" };
+    // RULES.md Section 4: when buffer is full, pair removal is blocked.
     if (s.trayTokens.length >= s.trayLimit) return { ok: false, reason: "tray-full" };
 
     if (s.pendingPairTile === null) {
@@ -389,6 +391,7 @@ function evaluateState() {
   const s = useGameStore.getState();
   if (!s.solverContext) return;
 
+  // RULES.md Section 8: victory needs a complete legal grid and exhausted stack.
   const completeGrid = s.revealed.every((row) => row.every((value) => value !== null));
   const allTilesRemoved = s.present.every((value) => !value);
   if (completeGrid && allTilesRemoved) {
@@ -411,11 +414,13 @@ function evaluateState() {
     return;
   }
 
+  // RULES.md Section 6 + 7: if stuck and undo exists, prompt undo flow first.
   if (s.undoRemaining > 0) {
     useGameStore.setState({ phase: "stuck", lastMessage: "Stuck: no legal moves. Use Undo." });
     return;
   }
 
+  // RULES.md Section 6: stuck with no undos costs one life.
   const nextLives = s.lives - 1;
   useGameStore.setState({
     lives: nextLives,

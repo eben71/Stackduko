@@ -2,12 +2,13 @@ import React from "react";
 import type { GameState } from "@/store/gameStore";
 
 const steps = [
-  "Goal: reveal legal moves in the stack and resolve the Sudoku. Fill every empty cell correctly to win.",
-  "Remove only legal pairs: both tiles must be open (no tile above + one side free) and values must match.",
-  "Each legal pair adds 2 tokens to your tray (capacity 5). If full, place tokens before removing more pairs.",
-  "Place tokens only in legal Sudoku cells. A value is illegal if it repeats in the same row, column, or 3×3 box.",
-  "Use Remove Pair Hint for guidance and Undo to recover mistakes. If no recovery is left in a stuck state, you lose a life.",
-  "Visible mode shows tile numbers. Hidden mode conceals them for higher difficulty. You can change this in Settings.",
+  "Goal: complete the 9x9 Sudoku and exhaust the stack. Difficulty changes how many cells are prefilled.",
+  "Remove only legal pairs: both tiles must be open (no tile above and one horizontal side free) and values must match.",
+  "Each legal pair adds 2 identical tokens to your buffer (capacity 5). If full, place tokens before removing more pairs.",
+  "Select a token to highlight legal cells. Placement is blocked if the value repeats in its row, column, or 3x3 box.",
+  "You have 3 undos and 3 lives per level. If you are stuck with no undos left, you lose one life.",
+  "Stuck means no removable pairs, full buffer, and no legal placements. Use Undo or Restart to recover.",
+  "Visible mode shows tile numbers and hidden mode conceals them. Change this in Settings.",
 ];
 
 export function TutorialOverlay({
