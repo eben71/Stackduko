@@ -193,7 +193,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   startTutorial: () => {
     get().startGame("easy", 1, 7001);
-    set({ phase: "tutorial", tutorialStep: 0, lastMessage: "Welcome to Pair & Place." });
+    set({ phase: "tutorial", tutorialStep: 0, lastMessage: "Welcome to Reveal & Resolve." });
   },
   finishTutorial: () => {
     updateProgress({ tutorialCompleted: true });

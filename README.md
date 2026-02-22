@@ -7,8 +7,6 @@ The core loop is:
 1. Reveal playable moves by removing free matching tiles from the stack.
 2. Resolve the Sudoku by placing earned number tokens into legal cells.
 
-> Internal UI text still references **Pair & Place** in some places. In this README, that loop is described as the current implementation of the broader Reveal & Resolve concept.
-
 ## Game Concept
 
 Each level starts with:
@@ -25,6 +23,11 @@ Players must balance two systems:
 ## Gameplay Mechanics
 
 Gameplay rules are maintained in one place: `docs/RULES.md`.
+
+The in-game loop is also referred to as **Pair & Place**:
+
+- **Pair**: remove free matching tiles to earn number tokens.
+- **Place**: spend those tokens in legal Sudoku cells.
 
 Highlights of the current hybrid rules:
 
@@ -122,7 +125,7 @@ npm run format:check
 
 ## Current Limitations
 
-- Some UX wording still uses the legacy “Pair & Place” label.
+- Tutorial and help text are now aligned to the same Reveal & Resolve / Pair & Place rule set.
 - Limited polish for animation/audio/game-feel.
 - Tutorial/help flow is functional but still lightweight compared with shipping quality onboarding.
 - Persistence is currently local-first and does not include cloud sync or account progression.
@@ -139,6 +142,5 @@ npm run format:check
 ## Additional Docs
 
 - Detailed gameplay rules (single source of truth): `docs/RULES.md`
-- Legacy design rule notes: `docs/GameRules.md`
 - Design notes: `docs/GDD.md`
 - Launch tracking: `Roadmap.md`

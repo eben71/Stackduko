@@ -1,20 +1,19 @@
-# Stackdoku Rules (Pair & Place)
+# Stackdoku Rules (Reveal & Resolve / Pair & Place)
 
-This is the single source of truth for gameplay rules. Keep this file aligned with code and tutorial text.
+This is the single source of truth for gameplay rules. Keep this file aligned with code, tutorial text, and help text.
 
-## 1. Tile Setup
+## 1. Level Setup
 
 - Each level uses a 9x9 Sudoku grid.
 - Difficulty controls prefilled cells: easy has more givens, hard has fewer.
 - Empty cells count is `81 - n` where `n` is prefilled cells.
-- The stack must contain tokens that correspond exactly to those empty cells.
+- The Mahjong-style tile stack is generated so its token values map to the remaining empty Sudoku cells.
 
-## 2. Tile Pairs
+## 2. Pair and Place Loop
 
-- The Mahjong-style stack contains only open matching pairs.
-- Every removable value appears exactly twice per pair action.
-- If a number is prefilled in the Sudoku, unmatched copies of that number are excluded from stack generation.
-- Result: stack token counts map exactly to remaining empty Sudoku cells.
+- **Reveal / Pair**: remove free matching tiles from the stack.
+- **Resolve / Place**: place earned number tokens into legal Sudoku cells.
+- A level can require switching between these phases often to avoid buffer lock.
 
 ## 3. Free Tile Rule
 
@@ -23,44 +22,55 @@ A tile is removable only when both are true:
 - No tile is on top of it.
 - At least one horizontal edge is free.
 
-## 4. Pair Removal and Tokens
+Only matching free tiles can be removed as a legal pair.
+
+## 4. Pair Removal and Token Buffer
 
 - Removing a legal matching pair awards two identical number tokens.
-- Tokens are placed into the token buffer.
+- Tokens are placed into the token buffer (tray).
 - Buffer capacity is 5.
-- If the buffer is full, the player must place tokens before removing more pairs.
+- If the buffer is full, pair removal is blocked until at least one token is placed.
 
-## 5. Placement
+## 5. Sudoku Placement Rule
 
-- Selecting a token highlights all legal cells.
-- Placement must obey Sudoku constraints:
+- Selecting a token highlights all legal target cells.
+- Placement is allowed only in empty cells that satisfy Sudoku constraints:
   - no duplicate in row
   - no duplicate in column
   - no duplicate in 3x3 box
-- Illegal placements are blocked and feedback is shown.
+- Illegal placements are blocked with feedback.
 
 ## 6. Lives and Undo
 
 - Players start each level with 3 lives.
 - Players have 3 undos per level.
-- If the player reaches a stuck state and has no undo left, resolving the turn costs one life.
+- Undo rewinds the most recent action and is the primary stuck-state recovery tool.
+- If the player is stuck and has no undos left, resolving that stuck turn costs one life.
 
 ## 7. Stuck Condition
 
-Prompt the player to undo or restart when all are true:
+A state is stuck only when all are true:
 
 - no removable pairs exist
 - token buffer is full
 - no legal placements remain for held tokens
 
-## 8. Victory
+When stuck, the player should be prompted to undo or restart.
+
+## 8. Victory Condition
 
 A level is solved only when both are true:
 
 - all Sudoku cells are filled legally
 - stack is exhausted
 
-## 9. Sync Requirement
+## 9. Modes
+
+- Visible mode shows tile numbers before removal.
+- Hidden mode conceals tile numbers and increases memory/planning difficulty.
+- Switching modes mid-level changes rendering only, not puzzle state or rules.
+
+## 10. Sync Requirement
 
 If rules change, update all of the following in the same change:
 
@@ -68,3 +78,4 @@ If rules change, update all of the following in the same change:
 - `README.md`
 - `docs/GDD.md`
 - `client/src/ui/TutorialOverlay.tsx`
+- `client/src/ui/HelpOverlay.tsx`
