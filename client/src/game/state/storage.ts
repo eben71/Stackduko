@@ -344,7 +344,7 @@ export const PROGRESS_DEFAULTS = DEFAULT_PROGRESS;
 function normalizeHighestLevelUnlocked(value: unknown): Record<Difficulty, number> {
   if (typeof value === "number") {
     const level = Math.max(1, Math.round(value));
-    return { easy: level, medium: level, hard: level };
+    return { easy: level, medium: level, hard: level, infinite: level };
   }
   if (value && typeof value === "object") {
     const candidate = value as Partial<Record<Difficulty, unknown>>;

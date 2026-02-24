@@ -25,6 +25,7 @@ export class GameScene extends Phaser.Scene {
     cellSize: 36,
     minX: 0,
     minY: 0,
+    stackScale: 1,
   };
 
   constructor(key: string = "GameScene") {
@@ -152,7 +153,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private computeTilePosition(tile: { x: number; y: number; z: number }) {
-    const scale = (this.layout as any).stackScale ?? 1;
+    const scale = this.layout.stackScale ?? 1;
     return {
       x:
         this.layout.stackOriginX +
@@ -176,7 +177,7 @@ export class GameScene extends Phaser.Scene {
     if (!tile) return;
     const position = this.computeTilePosition(tile);
     const sprite = new TileSprite(this, index, tile, position, this.settings);
-    const scale = (this.layout as any).stackScale ?? 1;
+    const scale = this.layout.stackScale ?? 1;
     sprite.setScale(scale);
     sprite.container.setDepth(tile.z * 1000 + position.y);
     sprite.setInteractive(
