@@ -1,7 +1,7 @@
 import { shuffle, type Rng } from "@/logic/rng";
 import { type TilePosition } from "@/logic/stack/types";
 
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = "easy" | "medium" | "hard" | "infinite";
 
 export type LayoutTemplate = {
   id: string;
@@ -50,7 +50,7 @@ const TEMPLATES: LayoutTemplate[] = [
       { width: 4, height: 4, offsetX: 2.5, offsetY: 2.5, z: 1 },
       { width: 1, height: 1, offsetX: 4, offsetY: 4, z: 2 },
     ],
-    { easy: 1.3, medium: 0.9, hard: 0.4 },
+    { easy: 1.3, medium: 0.9, hard: 0.4, infinite: 1.0 },
     -0.3,
   ),
   buildTemplate(
@@ -60,7 +60,7 @@ const TEMPLATES: LayoutTemplate[] = [
       { width: 6, height: 4, offsetX: 1.5, offsetY: 2.5, z: 1 },
       { width: 3, height: 1, offsetX: 3, offsetY: 4, z: 2 },
     ],
-    { easy: 0.9, medium: 1.1, hard: 0.8 },
+    { easy: 0.9, medium: 1.1, hard: 0.8, infinite: 1.0 },
     0,
   ),
   buildTemplate(
@@ -70,7 +70,7 @@ const TEMPLATES: LayoutTemplate[] = [
       { width: 4, height: 4, offsetX: 2.5, offsetY: 2.5, z: 1 },
       { width: 4, height: 4, offsetX: 2.5, offsetY: 2.5, z: 2 },
     ],
-    { easy: 0.4, medium: 0.9, hard: 1.3 },
+    { easy: 0.4, medium: 0.9, hard: 1.3, infinite: 1.0 },
     0.4,
   ),
 ];

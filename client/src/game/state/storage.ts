@@ -1,4 +1,4 @@
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = "easy" | "medium" | "hard" | "infinite";
 
 export type Settings = {
   version: 1;
@@ -53,6 +53,7 @@ const DEFAULT_PROGRESS: Progress = {
     easy: 1,
     medium: 1,
     hard: 1,
+    infinite: 1,
   },
   bestTimesMs: {},
   bestMoves: {},
@@ -112,7 +113,7 @@ function clamp(num: number, min: number, max: number): number {
 }
 
 function isDifficulty(value: unknown): value is Difficulty {
-  return value === "easy" || value === "medium" || value === "hard";
+  return value === "easy" || value === "medium" || value === "hard" || value === "infinite";
 }
 
 function defaultTileVisibilityForDifficulty(difficulty: Difficulty): boolean {
@@ -351,6 +352,7 @@ function normalizeHighestLevelUnlocked(value: unknown): Record<Difficulty, numbe
       easy: typeof candidate.easy === "number" ? Math.max(1, Math.round(candidate.easy)) : 1,
       medium: typeof candidate.medium === "number" ? Math.max(1, Math.round(candidate.medium)) : 1,
       hard: typeof candidate.hard === "number" ? Math.max(1, Math.round(candidate.hard)) : 1,
+      infinite: typeof candidate.infinite === "number" ? Math.max(1, Math.round(candidate.infinite)) : 1,
     };
   }
   return { ...DEFAULT_PROGRESS.highestLevelUnlocked };

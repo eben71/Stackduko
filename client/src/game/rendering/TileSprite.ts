@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { type TileSpec } from "@/logic/stack/types";
 import { type Settings } from "@/game/state/storage";
 
-type HighlightMode = "none" | "free" | "hint" | "pending";
+type HighlightMode = "none" | "free" | "hint" | "pending" | "locked";
 
 export class TileSprite {
   container: Phaser.GameObjects.Container;
@@ -11,6 +11,8 @@ export class TileSprite {
   private hintTween?: Phaser.Tweens.Tween;
   readonly index: number;
   readonly tile: TileSpec;
+
+  private baseScale: number = 1;
 
   constructor(
     scene: Phaser.Scene,
@@ -39,6 +41,11 @@ export class TileSprite {
     this.container.setData("tileIndex", index);
   }
 
+  setScale(scale: number) {
+    this.baseScale = scale;
+    this.container.setScale(scale);
+  }
+
   setNumberVisible(visible: boolean) {
     this.label.setText(visible ? String(this.tile.value) : "");
   }
@@ -58,11 +65,14 @@ export class TileSprite {
 
     if (mode === "free") {
       this.base.setTint(0xc7d2fe);
+    } else if (mode === "locked") {
+      this.base.setTint(0x94a3b8);
+      this.label.setAlpha(0.2); // Dim the number if we're locked
     } else if (mode === "pending") {
       this.base.setTint(0x86efac);
       this.hintTween = this.base.scene.tweens.add({
         targets: this.container,
-        scale: 1.05,
+        scale: this.baseScale * 1.05,
         duration: 400,
         yoyo: true,
         repeat: -1,
@@ -71,11 +81,15 @@ export class TileSprite {
       this.base.setTint(0xfde68a);
       this.hintTween = this.base.scene.tweens.add({
         targets: this.container,
-        scale: 1.05,
+        scale: this.baseScale * 1.05,
         duration: 420,
         yoyo: true,
         repeat: -1,
       });
+    }
+
+    if (mode !== "locked") {
+      this.label.setAlpha(1);
     }
   }
 

@@ -11,6 +11,7 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   easy: "Easy",
   medium: "Medium",
   hard: "Hard",
+  infinite: "Infinite Tower",
 };
 
 type SettingsOrigin = "menu" | "pause";
@@ -274,7 +275,7 @@ function DifficultySelect({
   onOptions,
 }: {
   selected: string;
-  onSelect: (difficulty: "easy" | "medium" | "hard") => void;
+  onSelect: (difficulty: "easy" | "medium" | "hard" | "infinite") => void;
   onStart: () => void;
   onBack: () => void;
   onOptions: () => void;
@@ -284,7 +285,7 @@ function DifficultySelect({
       <div className="menu-card">
         <div className="menu-title">Select Difficulty</div>
         <div className="difficulty-grid">
-          {(["easy", "medium", "hard"] as const).map((difficulty) => (
+          {(["easy", "medium", "hard", "infinite"] as const).map((difficulty) => (
             <button
               key={difficulty}
               className={`difficulty-card ${selected === difficulty ? "active" : ""}`}
@@ -295,6 +296,7 @@ function DifficultySelect({
                 {difficulty === "easy" && "More free tiles and visible numbers."}
                 {difficulty === "medium" && "Balanced layouts and hidden tiles."}
                 {difficulty === "hard" && "Denser stacks and fewer freebies."}
+                {difficulty === "infinite" && "Survive as long as possible. Clear lines!"}
               </div>
             </button>
           ))}
@@ -342,10 +344,17 @@ function Hud({
           <div className="hud-label">Level</div>
           <div className="hud-value">{state.levelNumber}</div>
         </div>
-        <div className="hud-card">
-          <div className="hud-label">Difficulty</div>
-          <div className="hud-value">{DIFFICULTY_LABELS[state.difficulty]}</div>
-        </div>
+        {state.difficulty === "infinite" ? (
+          <div className="hud-card">
+            <div className="hud-label">Score</div>
+            <div className="hud-value">{state.score}</div>
+          </div>
+        ) : (
+          <div className="hud-card">
+            <div className="hud-label">Difficulty</div>
+            <div className="hud-value">{DIFFICULTY_LABELS[state.difficulty]}</div>
+          </div>
+        )}
         <div className="hud-card">
           <div className="hud-label">Lives</div>
           <div className="hud-value">{state.lives}</div>
