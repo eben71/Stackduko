@@ -69,7 +69,12 @@ export class BoardRenderer {
         const previous = this.lastRevealed?.[row]?.[col] ?? null;
         this.cellTexts[row][col].setText(value ? String(value) : "");
         this.cellDots[row][col].setAlpha(value ? 0 : 0.25);
-        if (!previous && value) this.flashCell(row, col);
+
+        if (!previous && value) {
+          this.flashCell(row, col);
+        } else if (previous && !value) {
+          this.vaporizeCell(row, col, previous);
+        }
       }
     }
     this.lastRevealed = revealed.map((row) => [...row]);
@@ -220,6 +225,48 @@ export class BoardRenderer {
       alpha: 0,
       duration: 500,
       onComplete: () => highlight.destroy(),
+    });
+  }
+
+  private vaporizeCell(row: number, col: number, value: number) {
+    const x = this.origin.x + col * this.cellSize + this.cellSize / 2;
+    const y = this.origin.y + row * this.cellSize + this.cellSize / 2;
+
+    const text = this.scene.add
+      .text(x, y, String(value), {
+        fontFamily: "Fredoka, sans-serif",
+        fontSize: "24px",
+        color: "#ffffff",
+        fontStyle: "700",
+        backgroundColor: "#60a5fa",
+        padding: { x: 8, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setDepth(100);
+
+    const highlight = this.scene.add.graphics();
+    highlight.fillStyle(0x60a5fa, 0.8);
+    highlight.fillRoundedRect(
+      this.origin.x + col * this.cellSize,
+      this.origin.y + row * this.cellSize,
+      this.cellSize,
+      this.cellSize,
+      6,
+    );
+    highlight.setDepth(99);
+
+    this.scene.tweens.add({
+      targets: [text, highlight],
+      y: y - 40,
+      alpha: 0,
+      scale: 1.5,
+      angle: (Math.random() - 0.5) * 45,
+      duration: 600,
+      ease: "Cubic.out",
+      onComplete: () => {
+        text.destroy();
+        highlight.destroy();
+      },
     });
   }
 }

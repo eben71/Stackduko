@@ -11,6 +11,7 @@ import {
 } from "@/game/mechanics/tokenBuffer";
 import { generateLevel, type LevelData } from "@/logic/level/levelGenerator";
 import { buildAdjacency } from "@/logic/stack/freeTile";
+import { evaluateAndClearGrid } from "@/game/mechanics/gridClear";
 
 export type GamePhase =
   | "boot"
@@ -83,6 +84,7 @@ export type GameState = {
   tutorialMovesDone: number;
   tutorialHintUsed: boolean;
   tutorialLastReveal: { row: number; col: number; value: number } | null;
+  score: number;
   solverContext: { adjacency: ReturnType<typeof buildAdjacency> } | null;
   startGame: (difficulty?: Difficulty, levelNumber?: number, seed?: number) => LevelData;
   startTutorial: () => void;
@@ -102,6 +104,7 @@ export type GameState = {
   selectToken: (_source: "hand" | "tray", index: number) => void;
   moveSelectedTokenToTray: () => AttemptResult;
   placeSelectedToken: (row: number, col: number) => AttemptResult;
+  dropInfinitePair: () => void;
 };
 
 const baseGrid = () => Array.from({ length: 9 }, () => Array<number | null>(9).fill(null));
@@ -147,6 +150,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   tutorialMovesDone: 0,
   tutorialHintUsed: false,
   tutorialLastReveal: null,
+  score: 0,
   solverContext: null,
 
   startGame: (difficultyOverride, levelNumberOverride, seedOverride) => {
@@ -188,6 +192,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hintsRemaining: 0,
       hintsUsed: 0,
       undosUsed: 0,
+      score: 0,
       solverContext: { adjacency: buildAdjacency(level.tiles) },
     });
     return level;
@@ -310,6 +315,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastMessage: `Placed ${value} at R${row + 1} C${col + 1}`,
     });
 
+    if (s.difficulty === "infinite") {
+      const clearResult = evaluateAndClearGrid(revealed);
+      if (clearResult.clearedLines > 0) {
+        set({
+          revealed,
+          score: s.score + clearResult.clearedLines * clearResult.clearedLines * 100,
+          lastMessage: `Cleared ${clearResult.clearedLines} lines! +${clearResult.clearedLines * clearResult.clearedLines * 100} points`,
+        });
+      }
+    }
+
     evaluateState();
     return { ok: true };
   },
@@ -386,6 +402,48 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   clearHint: () => set({ hintTile: null }),
   clearMessage: () => set({ lastMessage: null }),
+
+  dropInfinitePair: () => {
+    const s = get();
+    if (s.phase !== "playing") return;
+
+    // Pick a random digit 1-9
+    const digit = Math.floor(Math.random() * 9) + 1;
+
+    const newTiles = [...s.tiles];
+    const newPresent = [...s.present];
+    const uniqueCoords = Array.from(new Set(s.tiles.map((t) => `${t.x},${t.y}`)));
+
+    for (let i = 0; i < 2; i += 1) {
+      const coordStr = uniqueCoords[Math.floor(Math.random() * uniqueCoords.length)];
+      const [x, y] = coordStr.split(",").map(Number);
+
+      let maxZ = -1;
+      for (let j = 0; j < newTiles.length; j += 1) {
+        if (newPresent[j] && newTiles[j].x === x && newTiles[j].y === y) {
+          if (newTiles[j].z > maxZ) maxZ = newTiles[j].z;
+        }
+      }
+
+      newTiles.push({
+        id: `infinite-${Date.now()}-${i}`,
+        x,
+        y,
+        z: maxZ + 1,
+        value: digit,
+      });
+      newPresent.push(true);
+    }
+
+    set({
+      tiles: newTiles,
+      present: newPresent,
+      solverContext: { adjacency: buildAdjacency(newTiles) },
+      lastMessage: "Tiles dropped!",
+    });
+
+    evaluateState();
+  },
 }));
 
 function evaluateState() {
@@ -396,9 +454,17 @@ function evaluateState() {
   const completeGrid = s.revealed.every((row) => row.every((value) => value !== null));
   const allTilesRemoved = s.present.every((value) => !value);
   if (completeGrid && allTilesRemoved) {
-    useGameStore.setState({ phase: "win" });
-    finalizeWin(useGameStore.getState());
-    return;
+    if (s.difficulty !== "infinite") {
+      useGameStore.setState({ phase: "win" });
+      finalizeWin(useGameStore.getState());
+      return;
+    } else {
+      useGameStore.setState({ phase: "win", lastMessage: "Finished early inside Infinite?" });
+      // In infinite mode, it's impossible to clear all tiles because we keep spawning them.
+      // But if they somehow clear the entire board seamlessly, you win.
+      finalizeWin(useGameStore.getState());
+      return;
+    }
   }
 
   const stuck = isStuckState({

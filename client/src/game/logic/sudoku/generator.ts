@@ -1,7 +1,7 @@
 import { mulberry32, shuffle } from "@/logic/rng";
 import { generateSolvedGrid } from "@/logic/sudoku/generator";
 
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = "easy" | "medium" | "hard" | "infinite";
 export type SudokuGrid = number[][];
 
 export type GeneratedPuzzle = {
@@ -18,6 +18,7 @@ const TARGET_GIVENS: Record<Difficulty, number> = {
   easy: 53,
   medium: 45,
   hard: 37,
+  infinite: 15,
 };
 
 export function generatePrefilledSudoku(seed: number, difficulty: Difficulty): GeneratedPuzzle {

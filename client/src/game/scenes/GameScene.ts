@@ -14,6 +14,7 @@ export class GameScene extends Phaser.Scene {
   private boardRenderer?: BoardRenderer;
   private gridLabel?: Phaser.GameObjects.Text;
   private revealTooltip?: Phaser.GameObjects.Text;
+  private infiniteEvent?: Phaser.Time.TimerEvent;
   private settings: Settings = getSettings();
   private unsubscribeStore?: () => void;
   private layout = {
@@ -24,6 +25,7 @@ export class GameScene extends Phaser.Scene {
     cellSize: 36,
     minX: 0,
     minY: 0,
+    stackScale: 1,
   };
 
   constructor(key: string = "GameScene") {
@@ -41,6 +43,8 @@ export class GameScene extends Phaser.Scene {
       this.boardRenderer = undefined;
       this.gridLabel = undefined;
       this.revealTooltip = undefined;
+      this.infiniteEvent?.destroy();
+      this.infiniteEvent = undefined;
       this.tiles.clear();
     });
   }
@@ -70,6 +74,19 @@ export class GameScene extends Phaser.Scene {
         this.syncFromStore();
       }
     });
+
+    this.infiniteEvent?.destroy();
+    if (state.difficulty === "infinite") {
+      this.infiniteEvent = this.time.addEvent({
+        delay: 6000,
+        loop: true,
+        callback: () => {
+          if (useGameStore.getState().phase === "playing") {
+            useGameStore.getState().dropInfinitePair();
+          }
+        },
+      });
+    }
   }
 
   private layoutScene() {
@@ -94,8 +111,13 @@ export class GameScene extends Phaser.Scene {
 
     const stackWidth = (maxX - minX + 1) * TILE_SIZE + maxZ * Math.abs(ISO_OFFSET_X);
     const stackHeight = (maxY - minY + 1) * TILE_SIZE + maxZ * ISO_OFFSET_Y;
-    const stackOriginX = (width - stackWidth) / 2;
-    const stackOriginY = Math.max(30, gridOriginY - stackHeight - 30);
+
+    // Scale stack if it's going to overlap with the grid or crop at the top
+    const availableHeight = Math.max(10, gridOriginY - 40);
+    const stackScale = stackHeight > availableHeight ? availableHeight / stackHeight : 1;
+
+    const stackOriginX = (width - stackWidth * stackScale) / 2;
+    const stackOriginY = Math.max(20, gridOriginY - stackHeight * stackScale - 20);
 
     const previousCellSize = this.layout.cellSize;
     this.layout = {
@@ -106,6 +128,7 @@ export class GameScene extends Phaser.Scene {
       cellSize: gridCellSize,
       minX,
       minY,
+      stackScale,
     };
 
     if (this.boardRenderer && previousCellSize !== gridCellSize) {
@@ -130,17 +153,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private computeTilePosition(tile: { x: number; y: number; z: number }) {
+    const scale = this.layout.stackScale ?? 1;
     return {
       x:
         this.layout.stackOriginX +
-        (tile.x - this.layout.minX) * TILE_SIZE +
-        TILE_SIZE / 2 +
-        tile.z * ISO_OFFSET_X,
+        ((tile.x - this.layout.minX) * TILE_SIZE + TILE_SIZE / 2 + tile.z * ISO_OFFSET_X) * scale,
       y:
         this.layout.stackOriginY +
-        (tile.y - this.layout.minY) * TILE_SIZE +
-        TILE_SIZE / 2 -
-        tile.z * ISO_OFFSET_Y,
+        ((tile.y - this.layout.minY) * TILE_SIZE + TILE_SIZE / 2 - tile.z * ISO_OFFSET_Y) * scale,
     };
   }
 
@@ -157,12 +177,26 @@ export class GameScene extends Phaser.Scene {
     if (!tile) return;
     const position = this.computeTilePosition(tile);
     const sprite = new TileSprite(this, index, tile, position, this.settings);
+    const scale = this.layout.stackScale ?? 1;
+    sprite.setScale(scale);
     sprite.container.setDepth(tile.z * 1000 + position.y);
     sprite.setInteractive(
       () => this.handleTileClick(index),
       (hovered) => this.handleTileHover(index, hovered),
     );
     this.tiles.set(index, sprite);
+
+    const duration = this.getAnimDuration(400);
+    if (duration > 0) {
+      const targetY = sprite.container.y;
+      sprite.container.setY(targetY - 600 - Math.random() * 200);
+      this.tweens.add({
+        targets: sprite.container,
+        y: targetY,
+        duration: duration + Math.random() * 300,
+        ease: "Bounce.easeOut",
+      });
+    }
   }
 
   private createBoard() {
@@ -308,9 +342,9 @@ export class GameScene extends Phaser.Scene {
       const isFree = isFreeTile(index, state.present, context.adjacency);
       const isPending = state.pendingPairTile === index;
       const isHint = state.hintTile === index;
-      tileSprite.setHighlight(isPending ? "pending" : isHint ? "hint" : isFree ? "free" : "none");
+      tileSprite.setHighlight(isPending ? "pending" : isHint ? "hint" : isFree ? "free" : "locked");
       tileSprite.setNumberVisible(this.settings.tileNumbersVisible);
-      tileSprite.container.setAlpha(isFree ? 1 : 0.6);
+      tileSprite.container.setAlpha(1); // Do not let tiles become translucent!
     });
   }
 
