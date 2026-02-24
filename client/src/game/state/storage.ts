@@ -352,7 +352,8 @@ function normalizeHighestLevelUnlocked(value: unknown): Record<Difficulty, numbe
       easy: typeof candidate.easy === "number" ? Math.max(1, Math.round(candidate.easy)) : 1,
       medium: typeof candidate.medium === "number" ? Math.max(1, Math.round(candidate.medium)) : 1,
       hard: typeof candidate.hard === "number" ? Math.max(1, Math.round(candidate.hard)) : 1,
-      infinite: typeof candidate.infinite === "number" ? Math.max(1, Math.round(candidate.infinite)) : 1,
+      infinite:
+        typeof candidate.infinite === "number" ? Math.max(1, Math.round(candidate.infinite)) : 1,
     };
   }
   return { ...DEFAULT_PROGRESS.highestLevelUnlocked };

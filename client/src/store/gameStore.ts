@@ -29,13 +29,13 @@ export type AttemptResult = {
   pending?: boolean;
   removedNodes?: [number, number];
   reason?:
-  | "blocked"
-  | "illegal"
-  | "tray-full"
-  | "not-playing"
-  | "not-free"
-  | "needs-placement"
-  | "mismatch";
+    | "blocked"
+    | "illegal"
+    | "tray-full"
+    | "not-playing"
+    | "not-free"
+    | "needs-placement"
+    | "mismatch";
   conflicts?: { row: number; col: number }[];
 };
 
