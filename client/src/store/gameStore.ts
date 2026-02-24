@@ -28,13 +28,13 @@ export type AttemptResult = {
   pending?: boolean;
   removedNodes?: [number, number];
   reason?:
-  | "blocked"
-  | "illegal"
-  | "tray-full"
-  | "not-playing"
-  | "not-free"
-  | "needs-placement"
-  | "mismatch";
+    | "blocked"
+    | "illegal"
+    | "tray-full"
+    | "not-playing"
+    | "not-free"
+    | "needs-placement"
+    | "mismatch";
   conflicts?: { row: number; col: number }[];
 };
 
@@ -267,7 +267,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectToken: (_source, index) => {
     const s = get();
     if (index < 0 || index >= s.trayTokens.length) return;
-    const value = s.trayTokens[index];
     set({
       selectedToken: { source: "tray", index },
       legalCells: [],

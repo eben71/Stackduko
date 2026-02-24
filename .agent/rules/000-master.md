@@ -4,6 +4,7 @@
 **Goal:** Write clean, secure, testable, and maintainable code for the Stackdoku codebase.
 
 ## How to Work in This Repository
+
 1. **Always read relevant rules:** When assigned a task, identify the domain (e.g., UI, gameplay, backend) and read the corresponding rule file in `.agent/rules/`.
 2. **Never bypass CI:** Avoid skipping type checks, linting, format checks, or tests to "get it through". CI must remain fully green (`make check lint format-check test build`).
 3. **No generic responses:** Avoid "god files", generic console logs, and unresolved TODOs.

@@ -5,6 +5,7 @@ trigger: always_on
 # Tech Stack & Coding Patterns
 
 ## Core Stack
+
 - **Frontend Framework:** React 18, Vite, Wouter (Routing)
 - **Styling:** Tailwind CSS, Radix UI Primitives, Lucide Icons, Framer Motion
 - **State Management:** Zustand, TanStack React Query
@@ -14,6 +15,7 @@ trigger: always_on
 - **Tooling:** TypeScript, ESLint, Prettier
 
 ## Architectural Patterns
+
 - **Clear Boundaries:**
   - API Layer: Request/response handling and orchestration only.
   - Services Layer: Core business logic.
