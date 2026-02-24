@@ -108,15 +108,7 @@ export function OverlayRoot() {
           onHelp={openHelp}
           onOptions={() => openSettings("menu")}
           onQuit={() => {
-            window.open("", "_self");
             window.close();
-            setTimeout(() => {
-              if (!window.closed) {
-                window.alert(
-                  "Your browser blocked closing this tab. Please close it manually (Ctrl+W / Cmd+W).",
-                );
-              }
-            }, 150);
           }}
         />
       )}
@@ -147,6 +139,7 @@ export function OverlayRoot() {
             undoMove();
           }}
           onRestart={restartLevel}
+          onQuit={quitToMenu}
           onHelp={openHelp}
         />
       )}
@@ -328,6 +321,7 @@ function Hud({
   onHint,
   onUndo,
   onRestart,
+  onQuit,
   onHelp,
 }: {
   state: GameSnapshot;
@@ -335,6 +329,7 @@ function Hud({
   onHint: () => void;
   onUndo: () => void;
   onRestart: () => void;
+  onQuit: () => void;
   onHelp: () => void;
 }) {
   const undoDisabled = state.undoRemaining !== null && state.undoRemaining <= 0;
@@ -394,6 +389,9 @@ function Hud({
           </button>
           <button className="hud-action" onClick={onRestart}>
             Restart
+          </button>
+          <button className="hud-action" onClick={onQuit}>
+            Exit
           </button>
           <button className="hud-help" onClick={onHelp} aria-label="How to play">
             <HelpCircle size={20} />

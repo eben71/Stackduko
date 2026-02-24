@@ -25,6 +25,8 @@ export type GamePhase =
 
 export type AttemptResult = {
   ok: boolean;
+  pending?: boolean;
+  removedNodes?: [number, number];
   reason?:
     | "blocked"
     | "illegal"
@@ -223,7 +225,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         pendingPairTile: index,
         lastMessage: `Selected ${s.tiles[index].value}. Pick its open match.`,
       });
-      return { ok: true };
+      return { ok: true, pending: true };
     }
 
     const first = s.pendingPairTile;
@@ -254,21 +256,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       pendingPairTile: null,
       history: [...s.history, { type: "pair", first, second: index, value }],
       moves: s.moves + 1,
-      legalCells: legalCellsForValue(s.revealed, value),
+      legalCells: [],
       lastMessage: `Pair removed. Added 2x ${value} to Token Buffer.`,
     });
 
     evaluateState();
-    return { ok: true };
+    return { ok: true, removedNodes: [first, index] };
   },
 
   selectToken: (_source, index) => {
     const s = get();
     if (index < 0 || index >= s.trayTokens.length) return;
-    const value = s.trayTokens[index];
     set({
       selectedToken: { source: "tray", index },
-      legalCells: legalCellsForValue(s.revealed, value),
+      legalCells: [],
     });
   },
 
@@ -299,7 +300,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       trayTokens,
       tray: trayTokens,
       selectedToken: nextSelected,
-      legalCells: nextSelected ? legalCellsForValue(revealed, trayTokens[nextSelected.index]) : [],
+      legalCells: [],
       history: [
         ...s.history,
         { type: "placement", row, col, value, tokenIndex: s.selectedToken.index },
@@ -331,7 +332,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           source: "tray",
           index: Math.min(action.tokenIndex, trayTokens.length - 1),
         },
-        legalCells: legalCellsForValue(revealed, action.value),
+        legalCells: [],
         history,
         undoRemaining: s.undoRemaining - 1,
         undosUsed: s.undosUsed + 1,
@@ -356,7 +357,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       trayTokens,
       tray: trayTokens,
       selectedToken: trayTokens.length ? { source: "tray", index: 0 } : null,
-      legalCells: trayTokens.length ? legalCellsForValue(s.revealed, trayTokens[0]) : [],
+      legalCells: [],
       history,
       undoRemaining: s.undoRemaining - 1,
       undosUsed: s.undosUsed + 1,
